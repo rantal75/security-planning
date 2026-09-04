@@ -5,6 +5,18 @@ fondo (Python + Google OR-Tools CP-SAT per il calcolo), ma riorganizzata in
 un'applicazione vera: **backend FastAPI** + **database SQLite** + **frontend
 web** al posto del notebook Colab.
 
+## Versione
+
+Il salto da v24.x a **v25.x** segna il cambio di architettura (Colab →
+FastAPI/SQLite/web); da qui in avanti la numerazione continua in modo
+progressivo a ogni modifica. Versione corrente visibile anche nell'interfaccia
+(badge accanto al titolo, in alto a sinistra).
+
+| Versione | Data | Cosa è cambiato |
+|----------|------|------------------|
+| v25.0 | 2026-09-04 | Prima consegna della nuova architettura: riscrittura completa da Colab/ipywidgets a FastAPI + SQLite + frontend web (vedi sezione "Cosa è cambiato rispetto alla v24.85" più sotto). |
+| v25.1 | 2026-09-04 | Sostituite tutte le emoji dell'interfaccia (☀️🌙👑🥈🥉⏳🛡️📥🖨️🛠️⚠️ ecc.) con un set di icone SVG disegnate su misura, in stile "console operativa". Palette e font invariati. |
+
 ## Struttura
 
 ```
