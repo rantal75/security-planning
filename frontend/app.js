@@ -10,19 +10,19 @@ const I18N = {
     tab_staff: "Personale", tab_constraints: "Ferie & Vincoli", tab_planning: "Planning",
     staff_form_title: "Aggiungi / modifica dipendente",
     lbl_lastname: "Cognome", lbl_firstname: "Nome",
-    lbl_pref_night: "🌙 Pref. Notte", lbl_pref_day: "☀️ Pref. Giorno", lbl_pref_33: "🔄 Pref. 3-3",
-    lbl_titular: "👑 Titolare", lbl_adjoint: "🥈 Aggiunto", lbl_equipe: "🥉 Equipe", lbl_temp: "⏳ Temporaneo",
+    lbl_pref_night: "Pref. Notte", lbl_pref_day: "Pref. Giorno", lbl_pref_33: "Pref. 3-3",
+    lbl_titular: "Titolare", lbl_adjoint: "Aggiunto", lbl_equipe: "Equipe", lbl_temp: "Temporaneo",
     lbl_weight: "Peso gerarchico personalizzato (opzionale)",
     btn_save: "Salva dipendente", btn_new: "Nuovo",
     staff_list_title: "Squadra",
     constraints_title: "Ferie, malattie e vincoli manuali",
     lbl_from: "Dal giorno", lbl_to: "Al giorno", lbl_employee: "Dipendente", lbl_type: "Tipo",
     type_ferie: "Ferie", type_malattia: "Malattia", type_riposo: "Riposo forzato", type_chef2: "Sostituzione capo",
-    btn_add: "Aggiungi", btn_reset_constraints: "⚠️ Azzera vincoli del mese",
+    btn_add: "Aggiungi", btn_reset_constraints: "Azzera vincoli del mese",
     lbl_month: "Mese", lbl_year: "Anno", lbl_chef_present: "Capo titolare presente",
     btn_generate: "Genera planning", opt_none: "— Evidenzia nessuno —",
-    btn_export: "📥 Esporta Excel", btn_print: "🖨 Stampa A4",
-    correction_title: "🛠️ Correzione manuale", lbl_day: "Giorno", lbl_move_to: "Sposta in",
+    btn_export: "Esporta Excel", btn_print: "Stampa A4",
+    correction_title: "Correzione manuale", lbl_day: "Giorno", lbl_move_to: "Sposta in",
     type_giorno: "Giornata", type_notte: "Notte",
     btn_apply: "Applica", counts_title: "Riepilogo turni per dipendente",
     col_day: "Giorno", col_date: "Data", col_giorno: "Giornata (07-19)", col_notte: "Notte (19-07)",
@@ -37,19 +37,19 @@ const I18N = {
     tab_staff: "Personnel", tab_constraints: "Congés & Contraintes", tab_planning: "Planning",
     staff_form_title: "Ajouter / modifier un agent",
     lbl_lastname: "Nom", lbl_firstname: "Prénom",
-    lbl_pref_night: "🌙 Préf. Nuit", lbl_pref_day: "☀️ Préf. Jour", lbl_pref_33: "🔄 Préf. 3-3",
-    lbl_titular: "👑 Titulaire", lbl_adjoint: "🥈 Adjoint", lbl_equipe: "🥉 Équipe", lbl_temp: "⏳ Temporaire",
+    lbl_pref_night: "Préf. Nuit", lbl_pref_day: "Préf. Jour", lbl_pref_33: "Préf. 3-3",
+    lbl_titular: "Titulaire", lbl_adjoint: "Adjoint", lbl_equipe: "Équipe", lbl_temp: "Temporaire",
     lbl_weight: "Poids hiérarchique personnalisé (optionnel)",
     btn_save: "Enregistrer", btn_new: "Nouveau",
     staff_list_title: "Équipe",
     constraints_title: "Congés, maladies et contraintes manuelles",
     lbl_from: "Du jour", lbl_to: "Au jour", lbl_employee: "Agent", lbl_type: "Type",
     type_ferie: "Congés", type_malattia: "Maladie", type_riposo: "Repos forcé", type_chef2: "Remplacement chef",
-    btn_add: "Ajouter", btn_reset_constraints: "⚠️ Réinitialiser les contraintes du mois",
+    btn_add: "Ajouter", btn_reset_constraints: "Réinitialiser les contraintes du mois",
     lbl_month: "Mois", lbl_year: "Année", lbl_chef_present: "Chef titulaire présent",
     btn_generate: "Générer le planning", opt_none: "— Ne rien surligner —",
-    btn_export: "📥 Exporter Excel", btn_print: "🖨 Imprimer A4",
-    correction_title: "🛠️ Correction manuelle", lbl_day: "Jour", lbl_move_to: "Déplacer vers",
+    btn_export: "Exporter Excel", btn_print: "Imprimer A4",
+    correction_title: "Correction manuelle", lbl_day: "Jour", lbl_move_to: "Déplacer vers",
     type_giorno: "Journée", type_notte: "Nuit",
     btn_apply: "Appliquer", counts_title: "Récapitulatif des services par agent",
     col_day: "Jour", col_date: "Date", col_giorno: "Journée (07-19)", col_notte: "Nuit (19-07)",
@@ -66,6 +66,11 @@ let EMPLOYEES = [];
 let LAST_RESULT = null; // { year, month, num_days, days: {...}, targets, night_targets }
 
 function t(key) { return I18N[LANG][key] || key; }
+
+// Restituisce il markup di un'icona SVG dallo sprite in index.html (vedi <defs>).
+function icon(name, extraClass = "") {
+  return `<svg class="icon ${extraClass}" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+}
 
 function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
@@ -130,13 +135,19 @@ function renderEmployeeList() {
   const el = document.getElementById("employee-list");
   el.innerHTML = "";
   EMPLOYEES.forEach(e => {
-    const icons = [
-      e.is_titular ? "👑" : "", e.is_adjoint ? "🥈" : "", e.is_equipe ? "🥉" : "",
-      e.pref_night ? "🌙" : (e.pref_day ? "☀️" : "⚖️"), e.pref_33 ? "🔄" : "",
-    ].join("");
+    const roleLabels = [];
+    const icons = [];
+    if (e.is_titular) { icons.push(icon("crown")); roleLabels.push(t("lbl_titular")); }
+    if (e.is_adjoint) { icons.push(icon("user-check")); roleLabels.push(t("lbl_adjoint")); }
+    if (e.is_equipe) { icons.push(icon("users")); roleLabels.push(t("lbl_equipe")); }
+    if (e.is_temp) { icons.push(icon("hourglass")); roleLabels.push(t("lbl_temp")); }
+    if (e.pref_night) { icons.push(icon("moon")); roleLabels.push(t("lbl_pref_night")); }
+    else if (e.pref_day) { icons.push(icon("sun")); roleLabels.push(t("lbl_pref_day")); }
+    if (e.pref_33) { icons.push(icon("repeat")); roleLabels.push(t("lbl_pref_33")); }
     const badge = document.createElement("div");
     badge.className = "emp-badge";
-    badge.innerHTML = `<span>${e.last_name.toUpperCase()}</span><span class="icons">${icons}</span><span class="del" data-id="${e.id}">✕</span>`;
+    badge.title = roleLabels.join(" · ");
+    badge.innerHTML = `<span>${e.last_name.toUpperCase()}</span><span class="icons">${icons.join("")}</span><span class="del" data-id="${e.id}">${icon("x")}</span>`;
     badge.addEventListener("click", (ev) => {
       if (ev.target.classList.contains("del")) return;
       fillEmployeeForm(e);
@@ -227,7 +238,7 @@ async function loadConstraints() {
     g.days.sort((a, b) => a - b);
     const row = document.createElement("div");
     row.className = "constraint-row";
-    row.innerHTML = `<span>${employeeName(g.employee_id)} — ${t("type_" + g.type) || g.type} (${g.days[0]}–${g.days[g.days.length - 1]})</span><span class="del">✕</span>`;
+    row.innerHTML = `<span>${employeeName(g.employee_id)} — ${t("type_" + g.type) || g.type} (${g.days[0]}–${g.days[g.days.length - 1]})</span><span class="del">${icon("x")}</span>`;
     row.querySelector(".del").addEventListener("click", async () => {
       for (const id of g.ids) await api(`/constraints/${id}`, { method: "DELETE" });
       await loadConstraints();
@@ -388,7 +399,7 @@ function renderCounts() {
     const ok = c.work === target;
     const row = document.createElement("div");
     row.className = "count-row " + (ok ? "ok" : "warn");
-    row.textContent = `${ok ? "✅" : "⚠️"} ${e.last_name.toUpperCase()}: ${c.work}/${target}g (${c.night} notti)`;
+    row.innerHTML = `<span class="label">${icon(ok ? "check-circle" : "warning")}${e.last_name.toUpperCase()}</span><span class="figures">${c.work}/${target}g (${c.night} notti)</span>`;
     el.appendChild(row);
   });
 }
