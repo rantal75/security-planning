@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestione Sicurezza — Planning Turni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">🛡</span>
+      <div class="brand-text">
+        <span class="brand-title" data-i18n="app_title">Gestione Sicurezza</span>
+        <span class="brand-sub" data-i18n="app_sub">Planning turni H24</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="lang-toggle">
+        <button class="lang-btn active" data-lang="IT">IT</button>
+        <button class="lang-btn" data-lang="FR">FR</button>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="personale" data-i18n="tab_staff">Personale</button>
+    <button class="tab" data-tab="vincoli" data-i18n="tab_constraints">Ferie &amp; Vincoli</button>
+    <button class="tab" data-tab="planning" data-i18n="tab_planning">Planning</button>
+  </nav>
+
+  <main class="content">
+
+    <!-- ===================== TAB PERSONALE ===================== -->
+    <section id="tab-personale" class="panel active">
+      <div class="grid-2">
+        <div class="card">
+          <h2 data-i18n="staff_form_title">Aggiungi / modifica dipendente</h2>
+          <form id="employee-form">
+            <input type="hidden" id="emp-id-hidden">
+            <div class="field-row">
+              <label>
+                <span data-i18n="lbl_lastname">Cognome</span>
+                <input type="text" id="emp-lastname" required>
+              </label>
+              <label>
+                <span data-i18n="lbl_firstname">Nome</span>
+                <input type="text" id="emp-firstname" required>
+              </label>
+            </div>
+
+            <div class="field-row checks">
+              <label class="chip"><input type="checkbox" id="emp-pref-night"> <span data-i18n="lbl_pref_night">🌙 Pref. Notte</span></label>
+              <label class="chip"><input type="checkbox" id="emp-pref-day"> <span data-i18n="lbl_pref_day">☀️ Pref. Giorno</span></label>
+              <label class="chip"><input type="checkbox" id="emp-pref-33"> <span data-i18n="lbl_pref_33">🔄 Pref. 3-3</span></label>
+            </div>
+
+            <div class="field-row checks">
+              <label class="chip"><input type="checkbox" id="emp-titular"> <span data-i18n="lbl_titular">👑 Titolare</span></label>
+              <label class="chip"><input type="checkbox" id="emp-adjoint"> <span data-i18n="lbl_adjoint">🥈 Aggiunto</span></label>
+              <label class="chip"><input type="checkbox" id="emp-equipe"> <span data-i18n="lbl_equipe">🥉 Equipe</span></label>
+              <label class="chip"><input type="checkbox" id="emp-temp"> <span data-i18n="lbl_temp">⏳ Temporaneo</span></label>
+            </div>
+
+            <label class="field-block">
+              <span data-i18n="lbl_weight">Peso gerarchico personalizzato (opzionale)</span>
+              <input type="number" id="emp-weight" min="1" max="10" placeholder="—">
+            </label>
+
+            <div class="form-actions">
+              <button type="submit" class="btn primary" data-i18n="btn_save">Salva dipendente</button>
+              <button type="button" id="btn-clear-form" class="btn ghost" data-i18n="btn_new">Nuovo</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="staff_list_title">Squadra</h2>
+          <div id="employee-list" class="employee-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== TAB VINCOLI ===================== -->
+    <section id="tab-vincoli" class="panel">
+      <div class="card">
+        <h2 data-i18n="constraints_title">Ferie, malattie e vincoli manuali</h2>
+        <form id="constraint-form" class="field-row wrap">
+          <label>
+            <span data-i18n="lbl_from">Dal giorno</span>
+            <input type="number" id="c-day-from" min="1" max="31" value="1" required>
+          </label>
+          <label>
+            <span data-i18n="lbl_to">Al giorno</span>
+            <input type="number" id="c-day-to" min="1" max="31" value="1" required>
+          </label>
+          <label class="grow">
+            <span data-i18n="lbl_employee">Dipendente</span>
+            <select id="c-employee"></select>
+          </label>
+          <label class="grow">
+            <span data-i18n="lbl_type">Tipo</span>
+            <select id="c-type">
+              <option value="ferie" data-i18n="type_ferie">Ferie</option>
+              <option value="malattia" data-i18n="type_malattia">Malattia</option>
+              <option value="riposo" data-i18n="type_riposo">Riposo forzato</option>
+              <option value="chef2" data-i18n="type_chef2">Sostituzione capo</option>
+            </select>
+          </label>
+          <button type="submit" class="btn primary" data-i18n="btn_add">Aggiungi</button>
+        </form>
+        <div id="constraint-list" class="constraint-list"></div>
+        <button id="btn-clear-constraints" class="btn danger small" data-i18n="btn_reset_constraints">⚠️ Azzera vincoli del mese</button>
+      </div>
+    </section>
+
+    <!-- ===================== TAB PLANNING ===================== -->
+    <section id="tab-planning" class="panel">
+      <div class="card generate-bar">
+        <label>
+          <span data-i18n="lbl_month">Mese</span>
+          <select id="p-month"></select>
+        </label>
+        <label>
+          <span data-i18n="lbl_year">Anno</span>
+          <select id="p-year"></select>
+        </label>
+        <label class="chip">
+          <input type="checkbox" id="p-chef-present" checked>
+          <span data-i18n="lbl_chef_present">Capo titolare presente</span>
+        </label>
+        <button id="btn-generate" class="btn primary" data-i18n="btn_generate">Genera planning</button>
+        <select id="p-highlight">
+          <option value="" data-i18n="opt_none">— Evidenzia nessuno —</option>
+        </select>
+        <button id="btn-export" class="btn ghost" data-i18n="btn_export">📥 Esporta Excel</button>
+        <button id="btn-print" class="btn ghost" data-i18n="btn_print">🖨 Stampa A4</button>
+      </div>
+
+      <div id="planning-status" class="status-msg"></div>
+
+      <div class="card">
+        <div id="planning-table-wrap"></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h2 data-i18n="correction_title">🛠️ Correzione manuale</h2>
+          <form id="correction-form" class="field-row wrap">
+            <label>
+              <span data-i18n="lbl_day">Giorno</span>
+              <select id="corr-day"></select>
+            </label>
+            <label class="grow">
+              <span data-i18n="lbl_employee">Dipendente</span>
+              <select id="corr-employee"></select>
+            </label>
+            <label class="grow">
+              <span data-i18n="lbl_move_to">Sposta in</span>
+              <select id="corr-dest">
+                <option value="giorno" data-i18n="type_giorno">Giornata</option>
+                <option value="notte" data-i18n="type_notte">Notte</option>
+                <option value="riposo" data-i18n="type_riposo">Riposo</option>
+              </select>
+            </label>
+            <button type="submit" class="btn info" data-i18n="btn_apply">Applica</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2 data-i18n="counts_title">Riepilogo turni per dipendente</h2>
+          <div id="counts-list" class="counts-list"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
