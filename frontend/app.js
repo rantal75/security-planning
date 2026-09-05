@@ -69,7 +69,7 @@ function t(key) { return I18N[LANG][key] || key; }
 
 // Restituisce il markup di un'icona SVG dallo sprite in index.html (vedi <defs>).
 function icon(name, extraClass = "") {
-  return `<svg class="icon ${extraClass}" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+  return `<svg class="icon ${extraClass}" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
 }
 
 function applyI18n() {

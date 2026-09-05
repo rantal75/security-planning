@@ -146,8 +146,7 @@ body {
 /* ---------- Forms ---------- */
 label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--text-dim); }
 .field-block { margin-top: 12px; }
-.field-row { display: flex; gap: 14px; margin-bottom: 12px; align-items: flex-end; }
-.field-row.wrap { flex-wrap: wrap; }
+.field-row { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 12px; align-items: flex-end; }
 .field-row.checks { gap: 10px; }
 .grow { flex: 1; min-width: 160px; }
 
@@ -167,6 +166,7 @@ input:focus, select:focus, button:focus-visible {
 }
 
 .chip {
+  display: flex; flex: 0 0 auto;
   flex-direction: row; align-items: center; gap: 7px;
   background: var(--panel-raised);
   border: 1px solid var(--border);
@@ -176,8 +176,8 @@ input:focus, select:focus, button:focus-visible {
   font-size: 12.5px;
   color: var(--text-dim);
 }
-.chip input { accent-color: var(--amber); }
-.chip .icon { color: var(--text-faint); }
+.chip input { accent-color: var(--amber); flex: 0 0 auto; }
+.chip .icon { flex: 0 0 auto; width: 15px; height: 15px; color: var(--text-faint); }
 .chip:has(input:checked) { color: var(--text); border-color: var(--amber); }
 .chip:has(input:checked) .icon { color: var(--amber); }
 
