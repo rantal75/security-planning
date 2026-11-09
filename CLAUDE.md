@@ -99,18 +99,17 @@ Il progetto è versionato con Git e pubblicato su
 che corrisponde a `main` su GitHub). La cartella sta su Google Drive
 (`G:\Il mio Drive\Lavoro\Prog planning\security-planning`) e l'utente ci
 lavora da due PC Windows. Serve Python 3.12 (Python 3.14 non è compatibile
-con `pydantic-core`/PyO3 al momento). Ogni PC ha il suo virtualenv: il
-`.venv` dentro la cartella è quello del portatile; sul PC fisso il
-virtualenv è `C:\venvs\security-planning`, fuori da Drive. Non avviare il
+con `pydantic-core`/PyO3 al momento). Ogni PC ha il suo virtualenv in
+`C:\venvs\security-planning`, fuori da Drive (fisso e portatile). Il
+vecchio `.venv` dentro la cartella di Drive NON va usato: OR-Tools si
+blocca all'import perché Drive legge troppo lentamente le sue DLL. Non avviare il
 gestionale su entrambi i PC insieme: `planning.db` è sincronizzato da Drive.
 
 ## Avvio locale
 
 ```bash
 cd security-planning
-.venv\Scripts\activate        # portatile
-uvicorn backend.main:app --reload
-# PC fisso: C:\venvs\security-planning\Scripts\uvicorn backend.main:app --reload
+C:\venvs\security-planning\Scripts\uvicorn backend.main:app --reload   # entrambi i PC
 ```
 
 Poi aprire il browser su http://127.0.0.1:8000/. Il database `planning.db`
