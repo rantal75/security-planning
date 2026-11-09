@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from . import models, schemas
 from .database import SessionLocal, init_db
-from .engine import ASSIGNABLE_TYPES, ShiftEngine
+from .engine import ASSIGNABLE_TYPES, ShiftEngine, holiday_groups_from_december
 from .excel_export import build_excel
 
 app = FastAPI(title="Gestione Sicurezza — Planning Turni")
@@ -286,6 +286,47 @@ def _apply_overrides(days_out: dict, overrides: dict):
             days_out[day][assignment].append(eid)
 
 
+def _load_holiday_history(db: Session, before_year: int) -> dict:
+    """{employee_id: {"natale": [anni], "capodanno": [anni]}} per gli anni
+    precedenti a `before_year` — input della rotazione delle feste."""
+    history: dict = {}
+    rows = db.query(models.HolidayHistory).filter(models.HolidayHistory.year < before_year).all()
+    for r in rows:
+        history.setdefault(r.employee_id, {}).setdefault(r.holiday, []).append(r.year)
+    return history
+
+
+def _load_saved_days(db: Session, year: int, month: int) -> dict | None:
+    row = db.query(models.SavedPlanning).filter_by(year=year, month=month).first()
+    return row.days if row else None
+
+
+def _record_holidays(db: Session, year: int, month: int, days: dict):
+    """Dopo il salvataggio di dicembre o gennaio, aggiorna lo storico delle
+    feste (v25.4). Idempotente: ricrea solo le righe automatiche di quel
+    salvataggio; le righe inserite a mano restano come sono."""
+    if month == 12:
+        holiday_year, source = year, "auto_dic"
+        groups = holiday_groups_from_december(days)
+        entries = [(eid, "natale") for eid in groups["natale"]]
+        entries += [(eid, "capodanno") for eid in groups["day31"] | groups["night31"]]
+    elif month == 1:
+        holiday_year, source = year - 1, "auto_gen"
+        jan1 = days.get(1) or days.get("1") or {}
+        entries = [(eid, "capodanno") for eid in jan1.get("giorno", [])]
+    else:
+        return
+
+    db.query(models.HolidayHistory).filter_by(year=holiday_year, source=source).delete()
+    db.flush()
+    for eid, holiday in entries:
+        exists = db.query(models.HolidayHistory).filter_by(
+            year=holiday_year, employee_id=eid, holiday=holiday
+        ).first()
+        if not exists:
+            db.add(models.HolidayHistory(year=holiday_year, employee_id=eid, holiday=holiday, source=source))
+
+
 def _generate_full(db: Session, year: int, month: int, chef_present: bool,
                     overtime_employee_ids: list[str] | None = None, overtime_max_extra: int = 0):
     """Genera il planning con il motore e applica sopra le correzioni
@@ -303,6 +344,8 @@ def _generate_full(db: Session, year: int, month: int, chef_present: bool,
         employees, year, month, constraints, chef_present,
         overtime_ids=set(overtime_employee_ids or []),
         overtime_max_extra=overtime_max_extra,
+        holiday_history=_load_holiday_history(db, before_year=year) if month == 12 else None,
+        prev_december=_load_saved_days(db, year - 1, 12) if month == 1 else None,
     )
     result = engine.generate()
     if not result.ok:
@@ -504,6 +547,8 @@ def save_planning(payload: schemas.SavePlanningIn):
             year=payload.year, month=payload.month
         ).delete()
 
+        _record_holidays(db, payload.year, payload.month, result.days)
+
         db.commit()
         db.refresh(row)
         return row.to_dict()
@@ -537,6 +582,60 @@ def get_saved_planning(year: int, month: int):
         if not row:
             raise HTTPException(404, "Nessun planning salvato per questo mese")
         return row.to_dict(include_days=True)
+    finally:
+        db.close()
+
+
+# ---------------------------------------------------------------------
+# Storico Natale/Capodanno (v25.4) — per la rotazione delle feste
+# ---------------------------------------------------------------------
+
+HOLIDAYS = ("natale", "capodanno")
+
+
+@app.get("/api/holidays/history")
+def list_holiday_history():
+    db = db_session()
+    try:
+        rows = db.query(models.HolidayHistory).order_by(models.HolidayHistory.year.desc()).all()
+        return [r.to_dict() for r in rows]
+    finally:
+        db.close()
+
+
+@app.post("/api/holidays/history")
+def add_holiday_history(payload: schemas.HolidayHistoryIn):
+    if payload.holiday not in HOLIDAYS:
+        raise HTTPException(400, "Festa non valida")
+    db = db_session()
+    try:
+        if not db.query(models.Employee).get(payload.employee_id):
+            raise HTTPException(404, "Dipendente non trovato")
+        row = db.query(models.HolidayHistory).filter_by(
+            year=payload.year, employee_id=payload.employee_id, holiday=payload.holiday
+        ).first()
+        if row:
+            return row.to_dict()  # già presente: niente doppioni
+        row = models.HolidayHistory(year=payload.year, employee_id=payload.employee_id,
+                                    holiday=payload.holiday, source="manuale")
+        db.add(row)
+        db.commit()
+        db.refresh(row)
+        return row.to_dict()
+    finally:
+        db.close()
+
+
+@app.delete("/api/holidays/history/{entry_id}")
+def delete_holiday_history(entry_id: int):
+    db = db_session()
+    try:
+        row = db.query(models.HolidayHistory).get(entry_id)
+        if not row:
+            raise HTTPException(404, "Voce non trovata")
+        db.delete(row)
+        db.commit()
+        return {"deleted": entry_id}
     finally:
         db.close()
 

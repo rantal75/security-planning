@@ -84,6 +84,13 @@ const I18N = {
     diag_category_chef2: "una o più sostituzioni del capo sono in conflitto tra loro o con le regole di sicurezza.",
     diag_category_riposo: "uno o più riposi forzati sono in conflitto tra loro o con le altre regole del mese.",
     diag_category_recupero: "uno o più giorni di recupero sono in conflitto tra loro o con le altre regole del mese.",
+    diag_category_festivita: "la regola Natale/Capodanno (chi lavora una festa non lavora l'altra): con le ferie e le assenze di fine anno non ci sono abbastanza persone per coprire entrambe le feste con gruppi separati.",
+    holiday_title: "Natale e Capodanno — rotazione",
+    holiday_hint: "Natale = Giornata o Notte del 24 o del 25 dicembre. Capodanno = Giornata o Notte del 31 e Giornata del 1° gennaio. Chi lavora una festa non lavora l'altra. Il motore dà la precedenza a chi l'ha fatta meno di recente. Lo storico si aggiorna da solo quando salvi dicembre e gennaio; gli anni passati puoi inserirli qui.",
+    lbl_holiday_year: "Anno (dicembre)", lbl_holiday: "Festa",
+    holiday_natale: "Natale", holiday_capodanno: "Capodanno",
+    holiday_empty: "Nessuno storico per ora: inserisci chi ha lavorato le feste negli anni passati.",
+    holiday_manual: "inserito a mano",
   },
   FR: {
     app_title: "Gestion Sécurité", app_sub: "Planning des équipes H24",
@@ -164,6 +171,13 @@ const I18N = {
     diag_category_chef2: "un ou plusieurs remplacements du chef sont en conflit entre eux ou avec les règles de sécurité.",
     diag_category_riposo: "un ou plusieurs repos forcés sont en conflit entre eux ou avec les autres règles du mois.",
     diag_category_recupero: "un ou plusieurs jours de récupération sont en conflit entre eux ou avec les autres règles du mois.",
+    diag_category_festivita: "la règle Noël/Nouvel An (qui travaille une fête ne travaille pas l'autre) : avec les congés et absences de fin d'année, il n'y a pas assez d'agents pour couvrir les deux fêtes avec des groupes séparés.",
+    holiday_title: "Noël et Nouvel An — rotation",
+    holiday_hint: "Noël = Journée ou Nuit du 24 ou du 25 décembre. Nouvel An = Journée ou Nuit du 31 et Journée du 1er janvier. Qui travaille une fête ne travaille pas l'autre. Le moteur donne la priorité à qui l'a faite le moins récemment. L'historique se met à jour tout seul à l'enregistrement de décembre et janvier ; les années passées peuvent être saisies ici.",
+    lbl_holiday_year: "Année (décembre)", lbl_holiday: "Fête",
+    holiday_natale: "Noël", holiday_capodanno: "Nouvel An",
+    holiday_empty: "Aucun historique pour l'instant : saisissez qui a travaillé les fêtes les années passées.",
+    holiday_manual: "saisi à la main",
   },
 };
 
@@ -217,6 +231,7 @@ document.querySelectorAll(".lang-btn").forEach(btn => {
     populateMonthYear();
     if (LAST_RESULT) renderPlanningTable();
     loadRecoveryBalances();
+    loadHolidayHistory();
   });
 });
 
@@ -356,7 +371,7 @@ document.getElementById("employee-form").addEventListener("submit", async (ev) =
 
 function renderEmployeeSelects() {
   const opts = EMPLOYEES.map(e => `<option value="${e.id}">${e.last_name.toUpperCase()} ${e.first_name}</option>`).join("");
-  ["c-employee", "corr-employee"].forEach(id => {
+  ["c-employee", "corr-employee", "h-employee"].forEach(id => {
     const sel = document.getElementById(id);
     const current = sel.value;
     sel.innerHTML = opts;
@@ -470,6 +485,61 @@ async function loadRecoveryBalances() {
       : pending.map(recoveryRowHtml).join("");
   }
 }
+
+// ---------------------------------------------------------------
+// Storico Natale/Capodanno (v25.4) — chi ha lavorato le feste, anno per
+// anno, per la rotazione. Vedi main.py: /api/holidays/history.
+// ---------------------------------------------------------------
+async function loadHolidayHistory() {
+  const rows = await api("/holidays/history"); // [{id, year, employee_id, holiday, source}]
+  const el = document.getElementById("holiday-history");
+  if (rows.length === 0) {
+    el.innerHTML = `<div class="status-msg">${t("holiday_empty")}</div>`;
+    return;
+  }
+  const years = [...new Set(rows.map(r => r.year))].sort((a, b) => b - a);
+  el.innerHTML = "";
+  years.forEach(year => {
+    const block = document.createElement("div");
+    block.className = "holiday-year";
+    block.innerHTML = `<div class="holiday-year-title">${year}</div>`;
+    ["natale", "capodanno"].forEach(holiday => {
+      const entries = rows
+        .filter(r => r.year === year && r.holiday === holiday)
+        .sort((a, b) => employeeName(a.employee_id).localeCompare(employeeName(b.employee_id)));
+      if (entries.length === 0) return;
+      const line = document.createElement("div");
+      line.className = "holiday-line";
+      line.innerHTML = `<span class="holiday-label">${t("holiday_" + holiday)}</span>`;
+      entries.forEach(r => {
+        const chip = document.createElement("span");
+        chip.className = "holiday-chip" + (r.source === "manuale" ? " manual" : "");
+        if (r.source === "manuale") chip.title = t("holiday_manual");
+        const emp = EMPLOYEES.find(x => x.id === r.employee_id);
+        chip.innerHTML = `${emp ? emp.last_name.toUpperCase() : r.employee_id}<span class="del">${icon("x")}</span>`;
+        chip.querySelector(".del").addEventListener("click", async () => {
+          await api(`/holidays/history/${r.id}`, { method: "DELETE" });
+          await loadHolidayHistory();
+        });
+        line.appendChild(chip);
+      });
+      block.appendChild(line);
+    });
+    el.appendChild(block);
+  });
+}
+
+document.getElementById("holiday-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const payload = {
+    year: parseInt(document.getElementById("h-year").value),
+    employee_id: document.getElementById("h-employee").value,
+    holiday: document.getElementById("h-holiday").value,
+  };
+  if (!payload.employee_id || !payload.year) return;
+  await api("/holidays/history", { method: "POST", body: JSON.stringify(payload) });
+  await loadHolidayHistory();
+});
 
 // ---------------------------------------------------------------
 // Correzioni manuali attive per il mese — elenco e cancellazione.
@@ -833,6 +903,8 @@ document.getElementById("btn-save-planning").addEventListener("click", async () 
     // Il salvataggio ricalcola anche il bilancio giorni di recupero
     // (nuovi crediti da eventuale straordinario in questo mese).
     await loadRecoveryBalances();
+    // Dicembre e gennaio aggiornano lo storico Natale/Capodanno (v25.4).
+    await loadHolidayHistory();
   } catch (e) {
     saveStatus.textContent = t("planning_save_error") + formatDiagnosis(e.detail && e.detail.diagnosis);
     saveStatus.className = "status-msg error";
@@ -1166,4 +1238,7 @@ document.getElementById("btn-print").addEventListener("click", () => {
   await loadOverrides();
   await loadSavedList();
   await loadRecoveryBalances();
+  // Default: il dicembre dell'anno scorso, il caso più comune da inserire
+  document.getElementById("h-year").value = new Date().getFullYear() - 1;
+  await loadHolidayHistory();
 })();

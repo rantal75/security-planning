@@ -74,6 +74,16 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   come lo straordinario). Regola: un elemento con icona tiene `data-i18n`
   su uno `<span>` interno, mai sull'elemento stesso, perché `applyI18n()`
   sostituisce `textContent` e cancellerebbe l'icona.
+- **v25.4** — Regola Natale/Capodanno (dettagli nella nota v25.4 in testa
+  a `engine.py`). Blocco Natale = G/N del 24-25; blocco Capodanno = G/N del
+  31 + G del 1° gennaio; vincolo rigido "mai entrambi". Rotazione tra gli
+  anni come penalità nell'obiettivo (tabella `holiday_history`, `year` =
+  anno del dicembre). Gennaio legge il dicembre SALVATO (`prev_december`):
+  se dicembre non è salvato, il 1° gennaio non ha regole. Lo storico si
+  aggiorna al salvataggio (`_record_holidays` in `main.py`, righe
+  `auto_dic`/`auto_gen`); le righe `manuale` non si toccano mai. Diagnosi:
+  nuova categoria `festivita`. Provato con i dati reali di dicembre 2026 e
+  gennaio 2027 (su una copia del db).
 
 ## Repository Git
 

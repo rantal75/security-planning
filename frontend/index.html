@@ -104,6 +104,9 @@
       <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
       <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
     </symbol>
+    <symbol id="icon-star" viewBox="0 0 24 24">
+      <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8L12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -116,7 +119,7 @@
         <span class="brand-title" data-i18n="app_title">Gestione Sicurezza</span>
         <span class="brand-sub" data-i18n="app_sub">Planning turni H24</span>
       </div>
-      <span class="version-tag" title="Versione applicazione">v25.3</span>
+      <span class="version-tag" title="Versione applicazione">v25.4</span>
     </div>
     <div class="topbar-right">
       <div class="lang-toggle">
@@ -225,6 +228,30 @@
         <h2><svg class="icon icon-ot" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-plus-circle"></use></svg><span data-i18n="recovery_balance_title">Bilancio giorni di recupero</span></h2>
         <p class="status-msg" data-i18n="recovery_balance_hint">Un giorno di straordinario lavorato matura un giorno di recupero. Il bilancio è cumulativo: può essere speso il mese successivo o in quello corrente (vincolo "Recupero straordinario" qui sopra).</p>
         <div id="recovery-balance-list" class="recovery-list"></div>
+      </div>
+
+      <div class="card">
+        <h2><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-star"></use></svg><span data-i18n="holiday_title">Natale e Capodanno — rotazione</span></h2>
+        <p class="status-msg" data-i18n="holiday_hint">Natale = Giornata o Notte del 24 o del 25 dicembre. Capodanno = Giornata o Notte del 31 e Giornata del 1° gennaio. Chi lavora una festa non lavora l'altra. Il motore dà la precedenza a chi l'ha fatta meno di recente. Lo storico si aggiorna da solo quando salvi dicembre e gennaio; gli anni passati puoi inserirli qui.</p>
+        <form id="holiday-form" class="field-row wrap">
+          <label>
+            <span data-i18n="lbl_holiday_year">Anno (dicembre)</span>
+            <input type="number" id="h-year" min="2000" max="2100" required>
+          </label>
+          <label class="grow">
+            <span data-i18n="lbl_employee">Dipendente</span>
+            <select id="h-employee"></select>
+          </label>
+          <label class="grow">
+            <span data-i18n="lbl_holiday">Festa</span>
+            <select id="h-holiday">
+              <option value="natale" data-i18n="holiday_natale">Natale</option>
+              <option value="capodanno" data-i18n="holiday_capodanno">Capodanno</option>
+            </select>
+          </label>
+          <button type="submit" class="btn primary" data-i18n="btn_add">Aggiungi</button>
+        </form>
+        <div id="holiday-history" class="holiday-history"></div>
       </div>
     </section>
 

@@ -157,6 +157,32 @@ class RecoveryEarned(Base):
         }
 
 
+class HolidayHistory(Base):
+    """Chi ha lavorato Natale o Capodanno in un dato anno (v25.4), per far
+    ruotare le feste su tutta la squadra. `year` è l'anno del dicembre (il
+    1° gennaio 2027 conta come Capodanno 2026). Le righe "auto_dic" /
+    "auto_gen" vengono ricreate dal salvataggio del planning di dicembre /
+    gennaio; le righe "manuale" (anni passati, inseriti dall'utente) non
+    vengono mai toccate in automatico."""
+    __tablename__ = "holiday_history"
+    __table_args__ = (UniqueConstraint("year", "employee_id", "holiday", name="uq_holiday_history"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    year = Column(Integer, nullable=False)
+    employee_id = Column(String, ForeignKey("employees.id"), nullable=False)
+    holiday = Column(String, nullable=False)  # natale/capodanno
+    source = Column(String, nullable=False, default="manuale")  # manuale/auto_dic/auto_gen
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "year": self.year,
+            "employee_id": self.employee_id,
+            "holiday": self.holiday,
+            "source": self.source,
+        }
+
+
 class SavedPlanning(Base):
     """Snapshot "definitivo" del planning per un mese (motore + correzioni
     manuali già applicate), salvato esplicitamente dall'utente dopo la

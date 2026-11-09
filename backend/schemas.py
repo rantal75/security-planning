@@ -54,6 +54,12 @@ class GenerateIn(BaseModel):
     overtime_max_extra: int = 0
 
 
+class HolidayHistoryIn(BaseModel):
+    year: int = Field(ge=2000, le=2100)  # anno del dicembre
+    employee_id: str
+    holiday: str  # natale/capodanno
+
+
 class SavePlanningIn(BaseModel):
     year: int
     month: int = Field(ge=1, le=12)

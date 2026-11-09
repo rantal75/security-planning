@@ -352,6 +352,17 @@ mark.hl {
 .recovery-row { padding: 6px 10px; background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); }
 .recovery-row.negative { color: var(--alert); border-color: var(--alert); }
 
+/* ---------- Storico Natale/Capodanno (v25.4) ---------- */
+.holiday-history { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; font-family: var(--font-data); font-size: 12.5px; }
+.holiday-year { padding: 8px 10px; background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius); }
+.holiday-year-title { font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.holiday-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 4px; }
+.holiday-label { min-width: 90px; color: var(--text-dim); }
+.holiday-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 20px; color: var(--text); }
+.holiday-chip.manual { border-style: dashed; }
+.holiday-chip .del { display: flex; color: var(--alert); cursor: pointer; }
+.holiday-chip .del .icon { width: 11px; height: 11px; }
+
 /* ---------- Counts ---------- */
 .counts-list { display: flex; flex-direction: column; gap: 6px; font-family: var(--font-data); font-size: 12.5px; }
 .count-row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel-raised); border: 1px solid var(--border); border-radius: var(--radius); }

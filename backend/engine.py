@@ -79,6 +79,26 @@ Aggiunto anche il tipo di vincolo "recupero": si comporta esattamente come
 invariata) — la differenza è puramente amministrativa e vive fuori dal
 motore (main.py): scala un giorno dal "bilancio" di giorni di recupero
 maturati con lo straordinario.
+
+MODIFICA (2026-11-09, v25.4): regola delle festività di fine anno, decisa
+con l'utente. Due "blocchi":
+  - Natale    = Giornata o Notte del 24 o del 25 dicembre;
+  - Capodanno = Giornata o Notte del 31 dicembre + Giornata del 1° gennaio.
+Chi lavora in un blocco NON può lavorare nell'altro (vincolo rigido, solo a
+dicembre e il 1° gennaio). Ne segue da sé che chi non fa Natale ha il 24 e
+il 25 di riposo. Il capo titolare non è un worker del motore, quindi resta
+escluso come richiesto.
+  - Dicembre: la rotazione tra gli anni è una preferenza forte (non un
+    vincolo): far lavorare una festa a chi l'ha già fatta di recente costa
+    nell'obiettivo (HOLIDAY_RECENCY_PENALTY), così ruota tutta la squadra.
+    Una piccola penalità base tiene i gruppi piccoli: più persone si
+    godono entrambe le feste.
+  - Gennaio: il motore non conosce il mese precedente, quindi il 1° gennaio
+    si basa sul dicembre SALVATO (`prev_december`). Chi ha fatto Natale o la
+    Notte del 31 non può fare la Giornata del 1° (la Notte del 31 seguita
+    dalla Giornata del 1° violerebbe anche il "mai giorno dopo notte").
+    Preferenza: la Giornata del 1° a chi ha fatto la Giornata del 31, e
+    riposo il 1° per chi non ha lavorato né Natale né il 31.
 """
 
 from __future__ import annotations
@@ -98,6 +118,35 @@ DEFAULT_WEIGHTS = {"ROMEO": 9, "BERTRAND": 8, "ZUPPARDO": 8, "FUSCO": 7}
 DEFAULT_WEIGHT = 5
 
 ASSIGNABLE_TYPES = {"giorno", "notte", "riposo", "ferie", "malattia", "chef2", "recupero"}
+
+# --- Festività di fine anno (vedi nota v25.4 in testa al file) ---
+NATALE_DAYS = (24, 25)
+CAPODANNO_DAY = 31
+# Penalità per chi rifà una festa già fatta N anni fa (N = chiave). Più è
+# recente, più costa: 400 supera di molto i bonus weekend (30-100), ma resta
+# sotto lo straordinario (-2000), quindi non forza mai giorni extra.
+HOLIDAY_RECENCY_PENALTY = {1: 400, 2: 200, 3: 100}
+HOLIDAY_OLD_PENALTY = 50     # 4 o più anni fa
+HOLIDAY_BASE_PENALTY = 40    # tiene piccoli i gruppi Natale/Capodanno
+JAN1_PREFERENCE_BONUS = 60
+
+
+def holiday_groups_from_december(dec_days: dict) -> dict[str, set[str]]:
+    """Dai giorni di un planning di dicembre (struttura `days` del motore o
+    di uno snapshot salvato, con chiavi int o str) ricava chi ha fatto
+    Natale, chi la Giornata del 31 e chi la Notte del 31."""
+    def shift(day: int, kind: str) -> set[str]:
+        entry = dec_days.get(day) or dec_days.get(str(day)) or {}
+        return set(entry.get(kind) or [])
+
+    natale = set()
+    for d in NATALE_DAYS:
+        natale |= shift(d, "giorno") | shift(d, "notte")
+    return {
+        "natale": natale,
+        "day31": shift(CAPODANNO_DAY, "giorno"),
+        "night31": shift(CAPODANNO_DAY, "notte"),
+    }
 
 
 def get_employee_weight(employee: dict) -> int:
@@ -135,7 +184,9 @@ class ShiftEngine:
 
     def __init__(self, employees: list[dict], year: int, month: int,
                  manual_constraints: dict[tuple[int, str], str], chef_present: bool,
-                 overtime_ids: Optional[set[str]] = None, overtime_max_extra: int = 0):
+                 overtime_ids: Optional[set[str]] = None, overtime_max_extra: int = 0,
+                 holiday_history: Optional[dict[str, dict[str, list[int]]]] = None,
+                 prev_december: Optional[dict] = None, holiday_rule: bool = True):
         """
         employees: lista di dict dipendente (id, first_name, last_name,
             pref_night, pref_day, pref_33, is_titular, is_adjoint, is_equipe,
@@ -150,6 +201,14 @@ class ShiftEngine:
             quota mensile che ciascun dipendente in overtime_ids può
             ricevere. 0 (default) equivale a nessuno straordinario, anche
             se overtime_ids non è vuoto.
+        holiday_history: solo per dicembre — {employee_id: {"natale":
+            [anni], "capodanno": [anni]}} degli anni precedenti, per la
+            rotazione delle feste (vedi nota v25.4).
+        prev_december: solo per gennaio — `days` del dicembre precedente
+            salvato, per la regola del 1° gennaio. None = nessun dicembre
+            salvato: il 1° gennaio non ha regole particolari.
+        holiday_rule: False disattiva la regola delle feste; usato solo
+            dalla diagnosi per capire se è lei a rendere il mese impossibile.
         """
         self.employees = sorted(employees, key=lambda e: -get_employee_weight(e))
         self.year, self.month = year, month
@@ -158,6 +217,9 @@ class ShiftEngine:
         self.num_days = calendar.monthrange(year, month)[1]
         self.overtime_ids = set(overtime_ids or set())
         self.overtime_max_extra = max(0, int(overtime_max_extra or 0))
+        self.holiday_history = holiday_history or {}
+        self.prev_december = prev_december
+        self.holiday_rule = holiday_rule
 
         self.titular = next((e for e in self.employees if e.get("is_titular")), None)
         self.workers = [e for e in self.employees if not e.get("is_titular")]
@@ -225,16 +287,28 @@ class ShiftEngine:
         probes_budget = 20
         probes_used = 0
 
+        def probe_ok(constraints: dict, time_limit: float, holiday_rule: bool = self.holiday_rule) -> bool:
+            probe = ShiftEngine(self.employees, self.year, self.month, constraints, self.chef_present,
+                                overtime_ids=self.overtime_ids, overtime_max_extra=self.overtime_max_extra,
+                                holiday_history=self.holiday_history, prev_december=self.prev_december,
+                                holiday_rule=holiday_rule)
+            return probe.generate(time_limit=time_limit, feasibility_only=True, diagnose=False).ok
+
+        # Regola Natale/Capodanno (v25.4): è la prima da provare a dicembre e
+        # a gennaio, perché con molte ferie a fine anno è la più probabile.
+        if self.holiday_rule and self.month in (12, 1):
+            probes_used += 1
+            if probe_ok(self.manual_constraints, 6.0, holiday_rule=False):
+                findings.append({"type": "festivita", "culprits": []})
+
         for t in relaxable_types:
             entries = [(d, eid) for (d, eid), ty in self.manual_constraints.items() if ty == t]
             if not entries or probes_used >= probes_budget:
                 continue
 
             reduced = {k: v for k, v in self.manual_constraints.items() if v != t}
-            probe = ShiftEngine(self.employees, self.year, self.month, reduced, self.chef_present,
-                                 overtime_ids=self.overtime_ids, overtime_max_extra=self.overtime_max_extra)
             probes_used += 1
-            if not probe.generate(time_limit=6.0, feasibility_only=True, diagnose=False).ok:
+            if not probe_ok(reduced, 6.0):
                 continue  # rimuovere l'intera categoria non basta: non è (solo) lei
 
             culprits = []
@@ -243,10 +317,8 @@ class ShiftEngine:
                     break
                 reduced2 = dict(self.manual_constraints)
                 del reduced2[(d, eid)]
-                probe2 = ShiftEngine(self.employees, self.year, self.month, reduced2, self.chef_present,
-                                      overtime_ids=self.overtime_ids, overtime_max_extra=self.overtime_max_extra)
                 probes_used += 1
-                if probe2.generate(time_limit=4.0, feasibility_only=True, diagnose=False).ok:
+                if probe_ok(reduced2, 4.0):
                     culprits.append({"day": d, "employee_id": eid})
             findings.append({"type": t, "culprits": culprits})
 
@@ -473,6 +545,36 @@ class ShiftEngine:
                 at_least_two = model.NewBoolVar(f"two_weekends_{w}")
                 model.Add(sum(free_weekends) >= 2).OnlyEnforceIf(at_least_two)
                 objective_terms.append(at_least_two * 100)
+
+        # --- Festività di fine anno (v25.4, vedi nota in testa al file) ---
+        if self.holiday_rule and self.month == 12 and nd >= CAPODANNO_DAY:
+            for w in range(W):
+                eid = self.workers[w]["id"]
+                natale = model.NewBoolVar(f"natale_{w}")
+                model.AddMaxEquality(natale, [work[w, d] for d in NATALE_DAYS])
+                capodanno = work[w, CAPODANNO_DAY]
+                # Vincolo rigido: o Natale o Capodanno, mai entrambi
+                model.Add(natale + capodanno <= 1)
+
+                past = self.holiday_history.get(eid, {})
+                for var, holiday in ((natale, "natale"), (capodanno, "capodanno")):
+                    penalty = HOLIDAY_BASE_PENALTY
+                    for y in past.get(holiday, []):
+                        gap = self.year - y
+                        if gap >= 1:
+                            penalty += HOLIDAY_RECENCY_PENALTY.get(gap, HOLIDAY_OLD_PENALTY)
+                    objective_terms.append(var * -penalty)
+
+        if self.holiday_rule and self.month == 1 and self.prev_december is not None:
+            groups = holiday_groups_from_december(self.prev_december)
+            for w in range(W):
+                eid = self.workers[w]["id"]
+                if eid in groups["natale"] or eid in groups["night31"]:
+                    model.Add(x_day[w, 1] == 0)
+                elif eid in groups["day31"]:
+                    objective_terms.append(x_day[w, 1] * JAN1_PREFERENCE_BONUS)
+                else:
+                    objective_terms.append(rest[w, 1] * JAN1_PREFERENCE_BONUS)
 
         # --- Priorità post-assenza: preferenza per rientro in notte (comportamento
         # ereditato dalla v24.85, mantenuto) ---
