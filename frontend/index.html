@@ -119,7 +119,7 @@
         <span class="brand-title" data-i18n="app_title">Gestione Sicurezza</span>
         <span class="brand-sub" data-i18n="app_sub">Planning turni H24</span>
       </div>
-      <span class="version-tag" title="Versione applicazione">v25.4</span>
+      <span class="version-tag" title="Versione applicazione">v25.5</span>
     </div>
     <div class="topbar-right">
       <div class="lang-toggle">
@@ -195,6 +195,7 @@
     <section id="tab-vincoli" class="panel">
       <div class="card">
         <h2 data-i18n="constraints_title">Ferie, malattie e vincoli manuali</h2>
+        <p id="constraint-period" class="status-msg"></p>
         <form id="constraint-form" class="field-row wrap">
           <label>
             <span data-i18n="lbl_from">Dal giorno</span>
@@ -220,6 +221,7 @@
           </label>
           <button type="submit" class="btn primary" data-i18n="btn_add">Aggiungi</button>
         </form>
+        <div id="constraint-status" class="status-msg"></div>
         <div id="constraint-list" class="constraint-list"></div>
         <button id="btn-clear-constraints" class="btn danger small"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-warning"></use></svg><span data-i18n="btn_reset_constraints">Azzera vincoli del mese</span></button>
       </div>

@@ -460,10 +460,18 @@ class ShiftEngine:
             for d in range(1, nd - 2):
                 model.Add(sum(rest[w, d + i] for i in range(4)) <= 3)
 
-            # Rientro dalle ferie: il primo giorno dopo un'assenza si lavora
+            # Rientro dalle ferie: il primo giorno dopo un'assenza si lavora.
+            # MODIFICA (v25.5): i riposi forzati/recuperi messi a mano subito
+            # dopo le ferie spostano in avanti il giorno di rientro, invece
+            # di rendere il mese impossibile (prima un riposo forzato il
+            # giorno dopo la fine delle ferie dava sempre "Nessuna soluzione").
             for d in range(1, nd):
                 if is_abs[w, d] and not is_abs.get((w, d + 1), 0):
-                    model.Add(work[w, d + 1] == 1)
+                    r = d + 1
+                    while r <= nd and self.manual_constraints.get((r, eid)) in ("riposo", "recupero"):
+                        r += 1
+                    if r <= nd and not is_abs.get((w, r), 0):
+                        model.Add(work[w, r] == 1)
 
             # --- Ritmo 2-2 (Sez. 4), rilassato per i Jolly ---
             if not self.is_jolly[eid]:

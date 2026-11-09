@@ -91,6 +91,10 @@ const I18N = {
     holiday_natale: "Natale", holiday_capodanno: "Capodanno",
     holiday_empty: "Nessuno storico per ora: inserisci chi ha lavorato le feste negli anni passati.",
     holiday_manual: "inserito a mano",
+    constraint_period: "Mese: {month} {year} — si cambia dalla tab Planning.",
+    constraint_added: "Aggiunto. Premi \"Genera planning\" per applicarlo.",
+    err_day_order: "\"Al giorno\" deve essere uguale o successivo a \"Dal giorno\".",
+    err_generic: "Operazione non riuscita: {msg}",
   },
   FR: {
     app_title: "Gestion Sécurité", app_sub: "Planning des équipes H24",
@@ -178,6 +182,10 @@ const I18N = {
     holiday_natale: "Noël", holiday_capodanno: "Nouvel An",
     holiday_empty: "Aucun historique pour l'instant : saisissez qui a travaillé les fêtes les années passées.",
     holiday_manual: "saisi à la main",
+    constraint_period: "Mois : {month} {year} — se change depuis l'onglet Planning.",
+    constraint_added: "Ajouté. Cliquez sur \"Générer le planning\" pour l'appliquer.",
+    err_day_order: "\"Au jour\" doit être égal ou postérieur à \"Du jour\".",
+    err_generic: "Opération échouée : {msg}",
   },
 };
 
@@ -232,6 +240,7 @@ document.querySelectorAll(".lang-btn").forEach(btn => {
     if (LAST_RESULT) renderPlanningTable();
     loadRecoveryBalances();
     loadHolidayHistory();
+    loadConstraints();
   });
 });
 
@@ -391,6 +400,10 @@ function currentPeriod() {
 
 async function loadConstraints() {
   const { year, month } = currentPeriod();
+  // Il form non ha un suo mese: usa quello scelto nella tab Planning. Lo
+  // mostriamo, così è chiaro a quale mese vanno ferie e riposi (v25.5).
+  document.getElementById("constraint-period").textContent = t("constraint_period")
+    .replace("{month}", I18N[LANG].months[month - 1]).replace("{year}", year);
   const rows = await api(`/constraints?year=${year}&month=${month}`);
   const el = document.getElementById("constraint-list");
   el.innerHTML = "";
@@ -427,17 +440,36 @@ document.getElementById("constraint-form").addEventListener("submit", async (ev)
     type: document.getElementById("c-type").value,
   };
   if (!payload.employee_id) return;
+  // MODIFICA (v25.5): prima ogni errore qui veniva scartato in silenzio
+  // (es. "Al giorno" rimasto a 1 dopo aver cambiato "Dal giorno"): il
+  // vincolo non veniva aggiunto e non compariva nessun messaggio.
+  const statusEl = document.getElementById("constraint-status");
+  const showError = (msg) => { statusEl.textContent = msg; statusEl.className = "status-msg error"; };
+  if (payload.day_to < payload.day_from) {
+    showError(t("err_day_order"));
+    return;
+  }
   try {
     await api("/constraints", { method: "POST", body: JSON.stringify(payload) });
   } catch (e) {
-    if (e.message === "insufficient_recovery_balance") {
-      alert(t("insufficient_recovery_balance"));
-      return;
-    }
-    throw e;
+    showError(e.message === "insufficient_recovery_balance"
+      ? t("insufficient_recovery_balance")
+      : t("err_generic").replace("{msg}", e.message));
+    return;
   }
+  statusEl.textContent = t("constraint_added");
+  statusEl.className = "status-msg ok";
   await loadConstraints();
   if (payload.type === "recupero") await loadRecoveryBalances();
+});
+
+// "Al giorno" segue "Dal giorno" quando resterebbe indietro: il caso più
+// comune (un solo giorno, o un intervallo che parte più avanti) non
+// richiede più di correggere a mano anche il secondo campo.
+document.getElementById("c-day-from").addEventListener("change", () => {
+  const from = document.getElementById("c-day-from");
+  const to = document.getElementById("c-day-to");
+  if (parseInt(to.value) < parseInt(from.value) || !to.value) to.value = from.value;
 });
 
 document.getElementById("btn-clear-constraints").addEventListener("click", async () => {

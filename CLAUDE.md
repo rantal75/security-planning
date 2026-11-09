@@ -84,6 +84,11 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   `auto_dic`/`auto_gen`); le righe `manuale` non si toccano mai. Diagnosi:
   nuova categoria `festivita`. Provato con i dati reali di dicembre 2026 e
   gennaio 2027 (su una copia del db).
+- **v25.5** — Form vincoli: niente più errori scartati in silenzio
+  (`#constraint-status`), "Al giorno" segue "Dal giorno", mese mostrato in
+  `#constraint-period` (il form usa il mese della tab Planning). Motore: la
+  regola "rientro dalle ferie si lavora" salta i riposi forzati/recuperi
+  messi subito dopo l'assenza.
 
 ## Repository Git
 
