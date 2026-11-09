@@ -91,6 +91,15 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   messi subito dopo l'assenza.
 - **v25.6** — All'avvio (`init()` in `app.js`) mese/anno della tab Planning
   partono dal mese prossimo invece che da Gennaio.
+- **v25.7** — Resoconto weekend nel "Riepilogo turni" (`weekendCounts()`
+  in `app.js`): solo weekend completi nel mese; lavorato = G/N sabato O
+  domenica; libero = riposo entrambi; weekend con ferie/malattia senza
+  turni non contati. Avviso arancione (`.wk-warn`) se < 2 liberi, tranne
+  per chi ha ferie/malattia nel mese (i "jolly" del motore). Motore: il
+  ciclo dei weekend era `range(1, nd - 1)` e saltava l'ultimo weekend dei
+  mesi che finiscono di domenica → `range(1, nd)`. Il cambio lingua ora
+  ridisegna anche il riepilogo (`lbl_nights` al posto di "notti" fisso).
+  Proposta per il futuro: conto annuale dei weekend lavorati per ruotarli.
 
 ## Repository Git
 

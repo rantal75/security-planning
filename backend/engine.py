@@ -520,7 +520,11 @@ class ShiftEngine:
 
             # --- Weekend (Sez. 7), trattati come bonus morbido ---
             free_weekends = []
-            for d in range(1, nd - 1):
+            # range(1, nd): il sabato può essere il penultimo giorno del mese
+            # (domenica = ultimo giorno). Fino alla v25.6 era range(1, nd - 1)
+            # e l'ultimo weekend dei mesi che finiscono di domenica veniva
+            # ignorato (corretto in v25.7).
+            for d in range(1, nd):
                 dt = date(self.year, self.month, d)
                 if dt.weekday() == 5:  # Sabato
                     sat, sun = d, d + 1

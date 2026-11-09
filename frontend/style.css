@@ -372,6 +372,9 @@ mark.hl {
 .count-row.ok .icon { color: var(--blue); }
 .count-row .ot-badge { color: var(--overtime); }
 .count-row.warn { color: var(--alert); }
+.count-row .figures { text-align: right; }
+.count-row .wk { display: block; color: var(--text-dim); white-space: nowrap; margin-top: 2px; }
+.count-row .wk.wk-warn { color: var(--amber); font-weight: 600; }
 
 /* ---------- Print ----------
    MODIFICA (2026-09-24, terza passata): la versione precedente usava un

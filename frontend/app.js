@@ -39,6 +39,8 @@ const I18N = {
     col_day: "Giorno", col_date: "Data", col_giorno: "Giornata (07-19)", col_notte: "Notte (19-07)",
     col_riposo: "Riposo", col_chef: "Capo", col_ferie: "Ferie", col_malattia: "Malattia",
     lbl_work_short: "g lav.", lbl_rest_short: "g riposo",
+    lbl_wk: "WE", lbl_wk_worked: "lav.", lbl_wk_free: "liberi", lbl_nights: "notti",
+    wk_hint: "Weekend completi del mese. Lavorato = Giornata o Notte di sabato o domenica; libero = riposo sabato e domenica. Arancione = meno di 2 weekend liberi.",
     none_sol: "Nessuna soluzione trovata: i vincoli attuali sono in conflitto tra loro per questo mese.",
     generated_ok: "Planning generato.",
     months: ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"],
@@ -130,6 +132,8 @@ const I18N = {
     col_day: "Jour", col_date: "Date", col_giorno: "Journée (07-19)", col_notte: "Nuit (19-07)",
     col_riposo: "Repos", col_chef: "Chef", col_ferie: "Congés", col_malattia: "Maladie",
     lbl_work_short: "j trav.", lbl_rest_short: "j repos",
+    lbl_wk: "WE", lbl_wk_worked: "trav.", lbl_wk_free: "libres", lbl_nights: "nuits",
+    wk_hint: "Week-ends complets du mois. Travaillé = Jour ou Nuit le samedi ou le dimanche ; libre = repos samedi et dimanche. Orange = moins de 2 week-ends libres.",
     none_sol: "Aucune solution trouvée : les contraintes actuelles sont en conflit pour ce mois.",
     generated_ok: "Planning généré.",
     months: ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],
@@ -237,7 +241,7 @@ document.querySelectorAll(".lang-btn").forEach(btn => {
     renderEmployeeList();
     renderEmployeeSelects();
     populateMonthYear();
-    if (LAST_RESULT) renderPlanningTable();
+    if (LAST_RESULT) { renderPlanningTable(); renderCounts(); }
     loadRecoveryBalances();
     loadHolidayHistory();
     loadConstraints();
@@ -836,6 +840,7 @@ function renderCounts() {
     LAST_RESULT.days[d].notte.forEach(id => { counts[id] && (counts[id].work++, counts[id].night++); });
     LAST_RESULT.days[d].riposo.forEach(id => { counts[id] && counts[id].rest++; });
   }
+  const weekends = weekendCounts();
   EMPLOYEES.forEach(e => {
     const target = LAST_RESULT.targets[e.id] ?? 0;
     // Giorni di riposo dovuti nel mese (formula "Sacri 15" pro-rata, esclusi
@@ -857,9 +862,40 @@ function renderCounts() {
     const row = document.createElement("div");
     row.className = "count-row " + (ok ? "ok" : "warn");
     const otBadge = otDays.length > 0 ? `<span class="ot-badge">+${otDays.length}</span>` : "";
-    row.innerHTML = `<span class="label">${icon(ok ? "check-circle" : "warning")}${e.last_name.toUpperCase()}</span><span class="figures">${c.work}/${target}${otBadge}${t("lbl_work_short")} (${c.night} notti) — ${c.rest}/${restDue}${t("lbl_rest_short")}</span>`;
+    // Weekend (v25.7): lavorato = Giornata o Notte di sabato O domenica;
+    // libero = riposo entrambi i giorni. I weekend con ferie/malattia e
+    // nessun turno non contano, e chi ha assenze nel mese ("jolly" nel
+    // motore) non riceve l'avviso: per lui il motore non cerca i 2 weekend.
+    const wk = weekends[e.id] || { worked: 0, free: 0, absent: false };
+    const wkWarn = !wk.absent && weekends.total >= 2 && wk.free < 2;
+    const wkFigures = `<span class="wk${wkWarn ? " wk-warn" : ""}" title="${t("wk_hint")}">${t("lbl_wk")} ${wk.worked} ${t("lbl_wk_worked")} / ${wk.free} ${t("lbl_wk_free")}</span>`;
+    row.innerHTML = `<span class="label">${icon(ok ? "check-circle" : "warning")}${e.last_name.toUpperCase()}</span><span class="figures">${c.work}/${target}${otBadge}${t("lbl_work_short")} (${c.night} ${t("lbl_nights")}) — ${c.rest}/${restDue}${t("lbl_rest_short")}${wkFigures}</span>`;
     el.appendChild(row);
   });
+}
+
+// Conta i weekend COMPLETI del mese (sabato e domenica entrambi nel mese,
+// come fa il motore): {employee_id: {worked, free, absent}, total}.
+function weekendCounts() {
+  const out = { total: 0 };
+  EMPLOYEES.forEach(e => out[e.id] = { worked: 0, free: 0, absent: false });
+  const days = LAST_RESULT.days;
+  const has = (d, kind, id) => (days[d][kind] || []).includes(id);
+  for (let d = 1; d < LAST_RESULT.num_days; d++) {
+    const dt = new Date(LAST_RESULT.year, LAST_RESULT.month - 1, d);
+    if (dt.getDay() !== 6) continue; // 6 = sabato
+    out.total++;
+    EMPLOYEES.forEach(e => {
+      const w = (x) => has(x, "giorno", e.id) || has(x, "notte", e.id);
+      if (w(d) || w(d + 1)) out[e.id].worked++;
+      else if (has(d, "riposo", e.id) && has(d + 1, "riposo", e.id)) out[e.id].free++;
+    });
+  }
+  // Chi ha ferie o malattia nel mese: niente avviso (vedi renderCounts).
+  for (let d = 1; d <= LAST_RESULT.num_days; d++) {
+    ["ferie", "malattia"].forEach(k => (days[d][k] || []).forEach(id => { if (out[id]) out[id].absent = true; }));
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------
