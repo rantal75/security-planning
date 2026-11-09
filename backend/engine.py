@@ -48,6 +48,37 @@ REGOLE CONFERMATE E MANTENUTE (già presenti, verificate corrette):
   - Rientro dalle ferie: il primo giorno dopo un'assenza deve essere lavorato.
   - Pesi gerarchici (ROMEO 9, BERTRAND 8, ZUPPARDO 8, FUSCO 7, altri 5).
   - Esubero/carenza squadra: allargamento della copertura giornaliera.
+
+MODIFICA (2026-09-18): il calcolo dei "Sacri 15" produceva internamente un
+valore `riposo_dovuto` (giorni di riposo pro-rata, escluse ferie/malattia)
+usato SOLO come passaggio intermedio per derivare il target di giorni di
+LAVORO, e poi scartato — non era mai esposto. Ora viene conservato in
+`self.riposi_dovuti` e restituito in `EngineResult.riposi_dovuti`, così da
+poter mostrare quanti giorni di riposo spettano a ciascun dipendente nel
+mese (valore che varia in base a ferie/malattia), non solo i giorni di
+lavoro dovuti.
+
+MODIFICA (2026-09-25): aggiunto il meccanismo "straordinario". Il vincolo
+`sum(work[w,d]) == target` era un'uguaglianza ESATTA senza alcun margine:
+se un'assenza prolungata (es. malattia per tutto il mese) toglie un
+lavoratore dalla rotazione, il solutore può non avere più alcuna soluzione
+ammissibile per ridistribuire quel carico sugli altri, anche quando in
+teoria ci sarebbe abbastanza "capacità umana" per farlo — da qui i
+"Nessuna soluzione trovata" su mesi con assenze pesanti. Per i soli
+dipendenti scelti esplicitamente come disponibili per lo straordinario
+(`overtime_ids`), il vincolo diventa un range [target, target+extra] con
+una penalità nell'obiettivo che scoraggia (senza vietare) il superamento
+della quota: il solutore usa lo straordinario solo se e quanto serve per
+trovare una soluzione, mai per scelta "gratuita". I giorni di lavoro
+eccedenti la quota vengono poi individuati (gli ultimi N giorni lavorati
+in ordine cronologico, N = extra effettivamente usato) e restituiti in
+`EngineResult.overtime_days` per l'evidenziazione in blu lato UI/export.
+
+Aggiunto anche il tipo di vincolo "recupero": si comporta esattamente come
+"riposo forzato" nel motore (giorno bloccato a non-lavoro, quota mensile
+invariata) — la differenza è puramente amministrativa e vive fuori dal
+motore (main.py): scala un giorno dal "bilancio" di giorni di recupero
+maturati con lo straordinario.
 """
 
 from __future__ import annotations
@@ -66,7 +97,7 @@ FIXED_HOLIDAYS = {(1, 1), (27, 1), (1, 5), (15, 8), (1, 11), (19, 11), (8, 12), 
 DEFAULT_WEIGHTS = {"ROMEO": 9, "BERTRAND": 8, "ZUPPARDO": 8, "FUSCO": 7}
 DEFAULT_WEIGHT = 5
 
-ASSIGNABLE_TYPES = {"giorno", "notte", "riposo", "ferie", "malattia", "chef2"}
+ASSIGNABLE_TYPES = {"giorno", "notte", "riposo", "ferie", "malattia", "chef2", "recupero"}
 
 
 def get_employee_weight(employee: dict) -> int:
@@ -84,6 +115,17 @@ class EngineResult:
     days: dict = field(default_factory=dict)  # {day: {"giorno": [...], "notte": [...], ...}}
     targets: dict = field(default_factory=dict)
     night_targets: dict = field(default_factory=dict)
+    riposi_dovuti: dict = field(default_factory=dict)
+    # {employee_id: [giorni]} — giorni di lavoro eccedenti la quota mensile
+    # (Sacri 15), assegnati per necessità di copertura ai soli dipendenti
+    # scelti come disponibili per lo straordinario. Vuoto per chi non ha
+    # superato la propria quota.
+    overtime_days: dict = field(default_factory=dict)
+    # Diagnosi automatica quando ok=False (vedi ShiftEngine._diagnose):
+    # [{"type": "chef2"|"riposo"|"recupero", "culprits": [{"day": int, "employee_id": str}, ...]}]
+    # "culprits" vuoto = la categoria è implicata ma non si è riusciti a
+    # isolare la singola voce responsabile entro il budget di prove.
+    diagnosis: list = field(default_factory=list)
     error: Optional[str] = None
 
 
@@ -92,7 +134,8 @@ class ShiftEngine:
     insieme di vincoli manuali già filtrati per quel mese/anno."""
 
     def __init__(self, employees: list[dict], year: int, month: int,
-                 manual_constraints: dict[tuple[int, str], str], chef_present: bool):
+                 manual_constraints: dict[tuple[int, str], str], chef_present: bool,
+                 overtime_ids: Optional[set[str]] = None, overtime_max_extra: int = 0):
         """
         employees: lista di dict dipendente (id, first_name, last_name,
             pref_night, pref_day, pref_33, is_titular, is_adjoint, is_equipe,
@@ -100,12 +143,21 @@ class ShiftEngine:
         manual_constraints: dict {(giorno, employee_id): tipo} GIÀ filtrato
             per l'anno/mese corrente (vedi main.py: la scelta di filtrare qui
             e non nel motore mantiene il motore stesso puro e testabile).
+        overtime_ids: id dei dipendenti disponibili per lo straordinario in
+            questo mese (scelta ad-hoc, non un attributo fisso del
+            dipendente — vedi nota 2026-09-25 sopra).
+        overtime_max_extra: numero massimo di giorni di lavoro oltre la
+            quota mensile che ciascun dipendente in overtime_ids può
+            ricevere. 0 (default) equivale a nessuno straordinario, anche
+            se overtime_ids non è vuoto.
         """
         self.employees = sorted(employees, key=lambda e: -get_employee_weight(e))
         self.year, self.month = year, month
         self.manual_constraints = manual_constraints
         self.chef_present = chef_present
         self.num_days = calendar.monthrange(year, month)[1]
+        self.overtime_ids = set(overtime_ids or set())
+        self.overtime_max_extra = max(0, int(overtime_max_extra or 0))
 
         self.titular = next((e for e in self.employees if e.get("is_titular")), None)
         self.workers = [e for e in self.employees if not e.get("is_titular")]
@@ -113,6 +165,12 @@ class ShiftEngine:
         self.targets: dict[str, int] = {}
         self.night_targets: dict[str, tuple[int, int]] = {}
         self.is_jolly: dict[str, bool] = {}
+        # Giorni di riposo dovuti nel mese per dipendente, formula "Sacri 15"
+        # pro-rata sui giorni di presenza effettiva (esclusi ferie/malattia).
+        # Varia in funzione delle assenze: in un mese di 30gg senza assenze
+        # il riposo teorico è 15gg; con ferie/malattia viene riproporzionato
+        # sui soli giorni di presenza.
+        self.riposi_dovuti: dict[str, int] = {}
 
         riposo_teorico = self.num_days - 15
         total_target_capacity = 0
@@ -129,6 +187,7 @@ class ShiftEngine:
             riposo_dovuto = int((presenza * riposo_teorico / self.num_days) + 0.5)
             target = max(0, presenza - riposo_dovuto)
             self.targets[eid] = target
+            self.riposi_dovuti[eid] = riposo_dovuto
             total_target_capacity += target
 
             if self.is_jolly[eid]:
@@ -148,7 +207,68 @@ class ShiftEngine:
         self.is_overflow = total_target_capacity > standard_capacity
 
     # ------------------------------------------------------------------
-    def generate(self) -> EngineResult:
+    def _diagnose(self) -> list[dict]:
+        """Quando il modello non ha soluzione, prova a capire perché invece
+        di limitarsi a "Nessuna soluzione trovata". Approccio: per ogni
+        categoria di vincolo manuale che ha senso "rilassare" a scopo
+        diagnostico (sostituzione capo, riposo forzato, recupero — NON
+        ferie/malattia, che sono assenze reali e non un errore da
+        segnalare), rigenera rapidamente (poche secondi, sola
+        soddisfacibilità) SENZA quella categoria: se diventa risolvibile,
+        la categoria è coinvolta. In quel caso prova a restringere
+        ulteriormente rimuovendo una singola voce alla volta, per indicare
+        il giorno/dipendente specifico responsabile invece di una
+        categoria generica. Il numero di prove è limitato (budget) per non
+        far esplodere i tempi di attesa su mesi con molti vincoli."""
+        findings: list[dict] = []
+        relaxable_types = ("chef2", "riposo", "recupero")
+        probes_budget = 20
+        probes_used = 0
+
+        for t in relaxable_types:
+            entries = [(d, eid) for (d, eid), ty in self.manual_constraints.items() if ty == t]
+            if not entries or probes_used >= probes_budget:
+                continue
+
+            reduced = {k: v for k, v in self.manual_constraints.items() if v != t}
+            probe = ShiftEngine(self.employees, self.year, self.month, reduced, self.chef_present,
+                                 overtime_ids=self.overtime_ids, overtime_max_extra=self.overtime_max_extra)
+            probes_used += 1
+            if not probe.generate(time_limit=6.0, feasibility_only=True, diagnose=False).ok:
+                continue  # rimuovere l'intera categoria non basta: non è (solo) lei
+
+            culprits = []
+            for (d, eid) in entries:
+                if probes_used >= probes_budget:
+                    break
+                reduced2 = dict(self.manual_constraints)
+                del reduced2[(d, eid)]
+                probe2 = ShiftEngine(self.employees, self.year, self.month, reduced2, self.chef_present,
+                                      overtime_ids=self.overtime_ids, overtime_max_extra=self.overtime_max_extra)
+                probes_used += 1
+                if probe2.generate(time_limit=4.0, feasibility_only=True, diagnose=False).ok:
+                    culprits.append({"day": d, "employee_id": eid})
+            findings.append({"type": t, "culprits": culprits})
+
+        return findings
+
+    # ------------------------------------------------------------------
+    def generate(self, time_limit: float = 50.0, feasibility_only: bool = False,
+                 diagnose: bool = True) -> EngineResult:
+        """
+        time_limit: secondi massimi concessi al solutore. Usato più basso
+            (poche secondi) dalle prove di diagnosi (vedi _diagnose sotto),
+            dove serve solo sapere SE esiste una soluzione, non la migliore.
+        feasibility_only: se True, il modello non ha obiettivo da
+            ottimizzare (nessuna model.Maximize) — il solutore si ferma
+            alla prima soluzione trovata, molto più veloce. Usato solo
+            dalle prove di diagnosi.
+        diagnose: se True (default per una chiamata "vera") e il modello
+            risulta senza soluzione, prova a individuare la causa più
+            probabile rieseguendo prove rapide con singoli vincoli
+            rimossi (vedi _diagnose). Le prove interne passano False per
+            evitare ricorsione.
+        """
         model = cp_model.CpModel()
         W = len(self.workers)
         nd = self.num_days
@@ -176,19 +296,53 @@ class ShiftEngine:
                 # riposo effettivo = non lavora e non è assente (le ferie non sono "riposo")
                 model.Add(rest[w, d] == 1 - work[w, d] - is_abs[w, d])
 
-                # Vincolo manuale esplicito "riposo forzato"
-                if self.manual_constraints.get((d, eid)) == "riposo":
+                # Vincolo manuale esplicito "riposo forzato" — "recupero" si
+                # comporta identicamente nel motore (blocca il giorno), la
+                # differenza è solo amministrativa (bilancio ore recupero,
+                # gestito fuori dal motore).
+                if self.manual_constraints.get((d, eid)) in ("riposo", "recupero"):
                     model.Add(work[w, d] == 0)
+
+                # Sostituzione del capo (chef2): quel giorno chi sostituisce
+                # lavora la Giornata (07-19) come farebbe il capo titolare —
+                # NON è un giorno di riposo. Prima questo vincolo non
+                # esisteva: "chef2" era solo un'etichetta applicata DOPO la
+                # generazione, senza alcun legame col motore. Se il
+                # solutore assegnava comunque un riposo quel giorno al
+                # sostituto, il dipendente "spariva" da tutte le colonne
+                # (non Giornata/Notte perché a riposo per il motore, non
+                # Riposo perché già "occupato" come capo nell'etichettatura
+                # finale) — falsando il conteggio mensile lavoro/riposo
+                # mostrato in UI (bug segnalato dall'utente il 2026-09-25).
+                if self.manual_constraints.get((d, eid)) == "chef2":
+                    model.Add(x_day[w, d] == 1)
+
+        # Giorni con sostituzione del capo, e chi (indice worker) sostituisce
+        # — usato per escludere il sostituto dal conteggio minimo di
+        # copertura: quel giorno lui FA il capo, non è uno dei security
+        # agent "di pattuglia". Devono comunque esserci almeno 2 agenti
+        # normali IN PIÙ a lui, esattamente come quando c'è il capo
+        # titolare Faure (che non è nemmeno un worker del motore e quindi
+        # non entra mai in questo conteggio) — segnalato dall'utente il
+        # 2026-09-25.
+        eid_to_widx = {self.workers[w]["id"]: w for w in range(W)}
+        chef2_widx_by_day: dict[int, int] = {}
+        for (d, eid), t in self.manual_constraints.items():
+            if t == "chef2" and eid in eid_to_widx:
+                chef2_widx_by_day[d] = eid_to_widx[eid]
 
         # --- Copertura giornaliera (Sez. 3: allargamento in caso di esubero/carenza) ---
         max_g, max_n = (5, 4) if self.is_overflow else (4, 3)
         for d in range(1, nd + 1):
-            model.Add(sum(x_day[w, d] for w in range(W)) >= 2)
+            chef_w = chef2_widx_by_day.get(d)
+            day_workers = [w for w in range(W) if w != chef_w] if chef_w is not None else list(range(W))
+            model.Add(sum(x_day[w, d] for w in day_workers) >= 2)
             model.Add(sum(x_day[w, d] for w in range(W)) <= max_g)
             model.Add(sum(x_night[w, d] for w in range(W)) >= 2)
             model.Add(sum(x_night[w, d] for w in range(W)) <= max_n)
 
         objective_terms = []
+        extra_vars: dict[int, cp_model.IntVar] = {}
 
         for w in range(W):
             emp = self.workers[w]
@@ -200,7 +354,19 @@ class ShiftEngine:
                     model.Add(work[w, d] == 0)
                 continue
 
-            model.Add(sum(work[w, d] for d in range(1, nd + 1)) == target)
+            if eid in self.overtime_ids and self.overtime_max_extra > 0:
+                # Straordinario: la quota diventa un range [target, target+extra]
+                # invece di un'uguaglianza rigida. Una forte penalità
+                # nell'obiettivo scoraggia il solutore dall'usare lo
+                # straordinario a meno che non sia l'unico modo per trovare
+                # una soluzione ammissibile (vedi nota 2026-09-25 in testa
+                # al file).
+                extra = model.NewIntVar(0, self.overtime_max_extra, f"extra_{w}")
+                model.Add(sum(work[w, d] for d in range(1, nd + 1)) == target + extra)
+                objective_terms.append(extra * -2000)
+                extra_vars[w] = extra
+            else:
+                model.Add(sum(work[w, d] for d in range(1, nd + 1)) == target)
 
             n_min, n_max = self.night_targets[eid]
             model.AddLinearConstraint(sum(x_night[w, d] for d in range(1, nd + 1)), n_min, n_max)
@@ -316,15 +482,33 @@ class ShiftEngine:
                 if is_abs.get((w, d), 0) and not is_abs.get((w, d + 1), 0):
                     objective_terms.append(x_night[w, d + 1] * 5)
 
-        model.Maximize(sum(objective_terms) if objective_terms else 0)
+        if not feasibility_only:
+            model.Maximize(sum(objective_terms) if objective_terms else 0)
+        # feasibility_only=True: nessun obiettivo -> problema di sola
+        # soddisfacibilità, il solutore si ferma alla prima soluzione.
 
         solver = cp_model.CpSolver()
-        solver.parameters.max_time_in_seconds = 50.0
+        solver.parameters.max_time_in_seconds = time_limit
         solver.parameters.num_search_workers = 8
         status = solver.Solve(model)
 
         if status not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
-            return EngineResult(ok=False, error="no_solution")
+            diagnosis = self._diagnose() if diagnose else []
+            return EngineResult(ok=False, error="no_solution", diagnosis=diagnosis)
+
+        # Giorni di straordinario per dipendente: gli ultimi N giorni
+        # lavorati in ordine cronologico, dove N = extra realmente usato dal
+        # solutore per quel dipendente (può essere 0 anche se il dipendente
+        # era disponibile per lo straordinario, se non è servito).
+        overtime_days: dict[str, list[int]] = {}
+        for w, extra_var in extra_vars.items():
+            extra_used = solver.Value(extra_var)
+            if extra_used <= 0:
+                continue
+            eid = self.workers[w]["id"]
+            worked_days = [d for d in range(1, nd + 1)
+                           if solver.Value(x_day[w, d]) or solver.Value(x_night[w, d])]
+            overtime_days[eid] = worked_days[-extra_used:]
 
         days_out = {
             d: {"giorno": [], "notte": [], "riposo": [], "ferie": [], "malattia": [], "chef": None}
@@ -373,4 +557,6 @@ class ShiftEngine:
             days=days_out,
             targets=dict(self.targets),
             night_targets=dict(self.night_targets),
+            riposi_dovuti=dict(self.riposi_dovuti),
+            overtime_days=overtime_days,
         )
