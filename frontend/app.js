@@ -1265,6 +1265,14 @@ document.getElementById("btn-print").addEventListener("click", () => {
 (async function init() {
   applyI18n();
   populateMonthYear();
+  // All'avvio propone il mese prossimo (v25.6): il planning si prepara in
+  // anticipo, e prima la pagina ripartiva sempre da Gennaio — ricaricando,
+  // ferie e riposi finivano nel mese sbagliato senza accorgersene.
+  const next = new Date();
+  next.setDate(1);
+  next.setMonth(next.getMonth() + 1);
+  document.getElementById("p-month").value = next.getMonth() + 1;
+  document.getElementById("p-year").value = next.getFullYear();
   await loadEmployees();
   await loadConstraints();
   await loadOverrides();

@@ -89,6 +89,8 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   `#constraint-period` (il form usa il mese della tab Planning). Motore: la
   regola "rientro dalle ferie si lavora" salta i riposi forzati/recuperi
   messi subito dopo l'assenza.
+- **v25.6** — All'avvio (`init()` in `app.js`) mese/anno della tab Planning
+  partono dal mese prossimo invece che da Gennaio.
 
 ## Repository Git
 
