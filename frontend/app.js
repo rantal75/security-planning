@@ -10,8 +10,8 @@ const I18N = {
     tab_staff: "Personale", tab_constraints: "Ferie & Vincoli", tab_planning: "Planning",
     staff_form_title: "Aggiungi / modifica dipendente",
     lbl_lastname: "Cognome", lbl_firstname: "Nome",
-    lbl_pref_night: "🌙 Pref. Notte", lbl_pref_day: "☀️ Pref. Giorno", lbl_pref_33: "🔄 Pref. 3-3",
-    lbl_titular: "👑 Titolare", lbl_adjoint: "🥈 Aggiunto", lbl_equipe: "🥉 Equipe", lbl_temp: "⏳ Temporaneo",
+    lbl_pref_night: "Pref. Notte", lbl_pref_day: "Pref. Giorno", lbl_pref_33: "Pref. 3-3",
+    lbl_titular: "Titolare", lbl_adjoint: "Aggiunto", lbl_equipe: "Equipe", lbl_temp: "Temporaneo",
     lbl_weight: "Peso gerarchico personalizzato (opzionale)",
     btn_save: "Salva dipendente", btn_new: "Nuovo",
     btn_show_advanced: "▸ Opzioni avanzate (preferenze, ruolo)",
@@ -21,19 +21,19 @@ const I18N = {
     lbl_from: "Dal giorno", lbl_to: "Al giorno", lbl_employee: "Dipendente", lbl_type: "Tipo",
     type_ferie: "Ferie", type_malattia: "Malattia", type_riposo: "Riposo forzato", type_chef2: "Sostituzione capo",
     type_recupero: "Recupero straordinario",
-    btn_add: "Aggiungi", btn_reset_constraints: "⚠️ Azzera vincoli del mese",
-    recovery_balance_title: "🟢 Bilancio giorni di recupero",
+    btn_add: "Aggiungi", btn_reset_constraints: "Azzera vincoli del mese",
+    recovery_balance_title: "Bilancio giorni di recupero",
     recovery_balance_hint: "Un giorno di straordinario lavorato matura un giorno di recupero. Il bilancio è cumulativo: può essere speso il mese successivo o in quello corrente (vincolo \"Recupero straordinario\" qui sopra).",
     recovery_row_label: "{name}: {balance} disponibili ({earned} maturati, {spent} usati)",
     recovery_empty: "Nessun giorno di straordinario maturato per ora.",
-    recovery_pending_title: "🟢 Giorni di recupero ancora da scontare",
+    recovery_pending_title: "Giorni di recupero ancora da scontare",
     recovery_pending_empty: "Nessuno ha giorni di recupero pendenti al momento.",
     insufficient_recovery_balance: "Il dipendente non ha abbastanza giorni di recupero maturati per questo intervallo.",
     lbl_month: "Mese", lbl_year: "Anno", lbl_chef_present: "Capo titolare presente",
     btn_generate: "Genera planning", opt_none: "— Evidenzia nessuno —",
-    btn_export: "📥 Esporta Excel", btn_print: "🖨 Stampa A4",
+    btn_export: "Esporta Excel", btn_print: "Stampa A4",
     opt_landscape: "Stampa: Orizzontale", opt_portrait: "Stampa: Verticale",
-    correction_title: "🛠️ Correzione manuale", lbl_day: "Giorno", lbl_move_to: "Sposta in",
+    correction_title: "Correzione manuale", lbl_day: "Giorno", lbl_move_to: "Sposta in",
     type_giorno: "Giornata", type_notte: "Notte",
     btn_apply: "Applica", counts_title: "Riepilogo turni per dipendente",
     col_day: "Giorno", col_date: "Data", col_giorno: "Giornata (07-19)", col_notte: "Notte (19-07)",
@@ -43,7 +43,7 @@ const I18N = {
     generated_ok: "Planning generato.",
     months: ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"],
     days_abbr: ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"],
-    correction_warning_intro: "⚠️ Questa modifica manuale viola una o più regole del planning:",
+    correction_warning_intro: "Questa modifica manuale viola una o più regole del planning:",
     correction_warning_confirm: "Vuoi applicarla comunque?",
     warn_day_after_night: "Il dipendente ha fatto Notte il giorno prima: non dovrebbe fare Giornata subito dopo (riposo insufficiente).",
     warn_night_before_day: "Il giorno dopo il dipendente è già di Giornata: non dovrebbe essere messo di Notte oggi (riposo insufficiente).",
@@ -53,28 +53,28 @@ const I18N = {
     warn_4_consecutive_rest: "Questa modifica crea una sequenza di 4 o più giorni di riposo consecutivi.",
     warn_exceeds_work_quota: "Con questa modifica il dipendente arriverebbe a {cur}/{target} giorni di lavoro nel mese: supera il numero di giorni lavorativi dovuti (regola dei \"Sacri 15\").",
     warn_exceeds_rest_quota: "Con questa modifica il dipendente arriverebbe a {cur}/{target} giorni di riposo nel mese: supera il numero di giorni di riposo dovuti.",
-    btn_save_planning: "💾 Salva planning",
+    btn_save_planning: "Salva planning",
     planning_saved_ok: "Planning salvato.",
     planning_save_error: "Errore durante il salvataggio del planning.",
     confirm_overwrite_saved: "Questo mese è già stato salvato in precedenza. Vuoi sovrascrivere il planning salvato con quello attuale?",
-    viewing_saved_banner: "👁 Stai visionando un planning salvato (sola lettura).",
-    btn_exit_view: "🔙 Torna al planning corrente",
-    saved_title: "📚 Planning salvati",
+    viewing_saved_banner: "Stai visionando un planning salvato (sola lettura).",
+    btn_exit_view: "Torna al planning corrente",
+    saved_title: "Planning salvati",
     lbl_saved_month: "Mese salvato",
-    btn_view_saved: "👁 Visualizza",
+    btn_view_saved: "Visualizza",
     saved_empty: "Nessun planning salvato per ora.",
     saved_select_none: "— Seleziona un mese —",
-    boundary_warning_title: "⚠️ Continuità con il mese precedente salvato",
+    boundary_warning_title: "Continuità con il mese precedente salvato",
     boundary_night_to_day: "{name}: Notte l'ultimo giorno del mese salvato, Giornata il primo giorno di questo mese — riposo insufficiente.",
     boundary_work_run: "{name}: sommando gli ultimi giorni di lavoro del mese precedente salvato e i primi di questo mese, risultano 4 o più giorni di lavoro consecutivi senza riposo.",
     boundary_rest_run: "{name}: sommando gli ultimi giorni di riposo del mese precedente salvato e i primi di questo mese, risultano 4 o più giorni di riposo consecutivi.",
-    btn_reset_overrides: "⚠️ Azzera correzioni manuali del mese",
+    btn_reset_overrides: "Azzera correzioni manuali del mese",
     overrides_list_title: "Correzioni manuali attive questo mese",
     override_row_label: "{name} — giorno {day}: {type}",
-    overtime_panel_title: "🟢 Nessuna soluzione — disponi qualcuno allo straordinario?",
+    overtime_panel_title: "Nessuna soluzione — disponi qualcuno allo straordinario?",
     overtime_panel_hint: "Il motore non trova una soluzione rispettando la quota mensile di tutti. Puoi permettere a uno o più dipendenti di superarla temporaneamente (giorni di straordinario, evidenziati in blu, che maturano un giorno di recupero ciascuno).",
     lbl_overtime_max: "Giorni extra max a testa",
-    btn_overtime_regenerate: "🟢 Rigenera con straordinario",
+    btn_overtime_regenerate: "Rigenera con straordinario",
     overtime_still_no_solution: "Ancora nessuna soluzione, anche con lo straordinario selezionato. Prova ad aggiungere altri dipendenti disponibili o ad aumentare i giorni extra.",
     overtime_used_ok: "Planning generato con {n} giorno/i di straordinario.",
     diag_intro: "Causa probabile:",
@@ -90,8 +90,8 @@ const I18N = {
     tab_staff: "Personnel", tab_constraints: "Congés & Contraintes", tab_planning: "Planning",
     staff_form_title: "Ajouter / modifier un agent",
     lbl_lastname: "Nom", lbl_firstname: "Prénom",
-    lbl_pref_night: "🌙 Préf. Nuit", lbl_pref_day: "☀️ Préf. Jour", lbl_pref_33: "🔄 Préf. 3-3",
-    lbl_titular: "👑 Titulaire", lbl_adjoint: "🥈 Adjoint", lbl_equipe: "🥉 Équipe", lbl_temp: "⏳ Temporaire",
+    lbl_pref_night: "Préf. Nuit", lbl_pref_day: "Préf. Jour", lbl_pref_33: "Préf. 3-3",
+    lbl_titular: "Titulaire", lbl_adjoint: "Adjoint", lbl_equipe: "Équipe", lbl_temp: "Temporaire",
     lbl_weight: "Poids hiérarchique personnalisé (optionnel)",
     btn_save: "Enregistrer", btn_new: "Nouveau",
     btn_show_advanced: "▸ Options avancées (préférences, rôle)",
@@ -101,19 +101,19 @@ const I18N = {
     lbl_from: "Du jour", lbl_to: "Au jour", lbl_employee: "Agent", lbl_type: "Type",
     type_ferie: "Congés", type_malattia: "Maladie", type_riposo: "Repos forcé", type_chef2: "Remplacement chef",
     type_recupero: "Récupération heures sup.",
-    btn_add: "Ajouter", btn_reset_constraints: "⚠️ Réinitialiser les contraintes du mois",
-    recovery_balance_title: "🟢 Solde des jours de récupération",
+    btn_add: "Ajouter", btn_reset_constraints: "Réinitialiser les contraintes du mois",
+    recovery_balance_title: "Solde des jours de récupération",
     recovery_balance_hint: "Un jour d'heures supplémentaires travaillé crédite un jour de récupération. Le solde est cumulatif : il peut être utilisé le mois suivant ou le mois en cours (contrainte \"Récupération heures sup.\" ci-dessus).",
     recovery_row_label: "{name} : {balance} disponibles ({earned} acquis, {spent} utilisés)",
     recovery_empty: "Aucun jour d'heures supplémentaires acquis pour l'instant.",
-    recovery_pending_title: "🟢 Jours de récupération encore à prendre",
+    recovery_pending_title: "Jours de récupération encore à prendre",
     recovery_pending_empty: "Personne n'a de jours de récupération en attente pour le moment.",
     insufficient_recovery_balance: "L'agent n'a pas assez de jours de récupération acquis pour cette période.",
     lbl_month: "Mois", lbl_year: "Année", lbl_chef_present: "Chef titulaire présent",
     btn_generate: "Générer le planning", opt_none: "— Ne rien surligner —",
-    btn_export: "📥 Exporter Excel", btn_print: "🖨 Imprimer A4",
+    btn_export: "Exporter Excel", btn_print: "Imprimer A4",
     opt_landscape: "Impression : Paysage", opt_portrait: "Impression : Portrait",
-    correction_title: "🛠️ Correction manuelle", lbl_day: "Jour", lbl_move_to: "Déplacer vers",
+    correction_title: "Correction manuelle", lbl_day: "Jour", lbl_move_to: "Déplacer vers",
     type_giorno: "Journée", type_notte: "Nuit",
     btn_apply: "Appliquer", counts_title: "Récapitulatif des services par agent",
     col_day: "Jour", col_date: "Date", col_giorno: "Journée (07-19)", col_notte: "Nuit (19-07)",
@@ -123,7 +123,7 @@ const I18N = {
     generated_ok: "Planning généré.",
     months: ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],
     days_abbr: ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"],
-    correction_warning_intro: "⚠️ Cette modification manuelle viole une ou plusieurs règles du planning :",
+    correction_warning_intro: "Cette modification manuelle viole une ou plusieurs règles du planning :",
     correction_warning_confirm: "Voulez-vous l'appliquer quand même ?",
     warn_day_after_night: "L'agent a fait Nuit la veille : il ne devrait pas faire Journée juste après (repos insuffisant).",
     warn_night_before_day: "Le lendemain l'agent est déjà en Journée : il ne devrait pas être mis de Nuit aujourd'hui (repos insuffisant).",
@@ -133,28 +133,28 @@ const I18N = {
     warn_4_consecutive_rest: "Cette modification crée une séquence de 4 jours de repos consécutifs ou plus.",
     warn_exceeds_work_quota: "Avec cette modification, l'agent atteindrait {cur}/{target} jours de travail ce mois-ci : cela dépasse le nombre de jours dus (règle des \"Sacri 15\").",
     warn_exceeds_rest_quota: "Avec cette modification, l'agent atteindrait {cur}/{target} jours de repos ce mois-ci : cela dépasse le nombre de jours de repos dus.",
-    btn_save_planning: "💾 Enregistrer le planning",
+    btn_save_planning: "Enregistrer le planning",
     planning_saved_ok: "Planning enregistré.",
     planning_save_error: "Erreur lors de l'enregistrement du planning.",
     confirm_overwrite_saved: "Ce mois a déjà été enregistré. Voulez-vous écraser le planning enregistré avec celui-ci ?",
-    viewing_saved_banner: "👁 Vous consultez un planning enregistré (lecture seule).",
-    btn_exit_view: "🔙 Revenir au planning en cours",
-    saved_title: "📚 Plannings enregistrés",
+    viewing_saved_banner: "Vous consultez un planning enregistré (lecture seule).",
+    btn_exit_view: "Revenir au planning en cours",
+    saved_title: "Plannings enregistrés",
     lbl_saved_month: "Mois enregistré",
-    btn_view_saved: "👁 Afficher",
+    btn_view_saved: "Afficher",
     saved_empty: "Aucun planning enregistré pour l'instant.",
     saved_select_none: "— Sélectionner un mois —",
-    boundary_warning_title: "⚠️ Continuité avec le mois précédent enregistré",
+    boundary_warning_title: "Continuité avec le mois précédent enregistré",
     boundary_night_to_day: "{name} : Nuit le dernier jour du mois enregistré, Journée le premier jour de ce mois — repos insuffisant.",
     boundary_work_run: "{name} : en cumulant les derniers jours de travail du mois précédent enregistré et les premiers de ce mois, cela fait 4 jours de travail consécutifs ou plus sans repos.",
     boundary_rest_run: "{name} : en cumulant les derniers jours de repos du mois précédent enregistré et les premiers de ce mois, cela fait 4 jours de repos consécutifs ou plus.",
-    btn_reset_overrides: "⚠️ Réinitialiser les corrections manuelles du mois",
+    btn_reset_overrides: "Réinitialiser les corrections manuelles du mois",
     overrides_list_title: "Corrections manuelles actives ce mois-ci",
     override_row_label: "{name} — jour {day} : {type}",
-    overtime_panel_title: "🟢 Aucune solution — rendre quelqu'un disponible pour des heures sup. ?",
+    overtime_panel_title: "Aucune solution — rendre quelqu'un disponible pour des heures sup. ?",
     overtime_panel_hint: "Le moteur ne trouve pas de solution en respectant le quota mensuel de tout le monde. Vous pouvez autoriser un ou plusieurs agents à le dépasser temporairement (jours d'heures sup., surlignés en bleu, qui créditent chacun un jour de récupération).",
     lbl_overtime_max: "Jours sup. max par agent",
-    btn_overtime_regenerate: "🟢 Régénérer avec heures sup.",
+    btn_overtime_regenerate: "Régénérer avec heures sup.",
     overtime_still_no_solution: "Toujours aucune solution, même avec les heures sup. sélectionnées. Essayez d'ajouter d'autres agents disponibles ou d'augmenter le nombre de jours.",
     overtime_used_ok: "Planning généré avec {n} jour(s) d'heures sup.",
     diag_intro: "Cause probable :",
@@ -183,6 +183,11 @@ let LIVE_RESULT_BACKUP = null; // conserva il planning corrente mentre si vision
 let OVERTIME_SELECTION = { ids: [], maxExtra: 0 };
 
 function t(key) { return I18N[LANG][key] || key; }
+
+// Restituisce il markup di un'icona SVG dallo sprite in index.html (vedi <defs>).
+function icon(name, extraClass = "") {
+  return `<svg class="icon ${extraClass}" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+}
 
 function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
@@ -259,13 +264,19 @@ function renderEmployeeList() {
   const el = document.getElementById("employee-list");
   el.innerHTML = "";
   EMPLOYEES.forEach(e => {
-    const icons = [
-      e.is_titular ? "👑" : "", e.is_adjoint ? "🥈" : "", e.is_equipe ? "🥉" : "",
-      e.pref_night ? "🌙" : (e.pref_day ? "☀️" : "⚖️"), e.pref_33 ? "🔄" : "",
-    ].join("");
+    const roleLabels = [];
+    const icons = [];
+    if (e.is_titular) { icons.push(icon("crown")); roleLabels.push(t("lbl_titular")); }
+    if (e.is_adjoint) { icons.push(icon("user-check")); roleLabels.push(t("lbl_adjoint")); }
+    if (e.is_equipe) { icons.push(icon("users")); roleLabels.push(t("lbl_equipe")); }
+    if (e.is_temp) { icons.push(icon("hourglass")); roleLabels.push(t("lbl_temp")); }
+    if (e.pref_night) { icons.push(icon("moon")); roleLabels.push(t("lbl_pref_night")); }
+    else if (e.pref_day) { icons.push(icon("sun")); roleLabels.push(t("lbl_pref_day")); }
+    if (e.pref_33) { icons.push(icon("repeat")); roleLabels.push(t("lbl_pref_33")); }
     const badge = document.createElement("div");
     badge.className = "emp-badge";
-    badge.innerHTML = `<span>${e.last_name.toUpperCase()}</span><span class="icons">${icons}</span><span class="del" data-id="${e.id}">✕</span>`;
+    badge.title = roleLabels.join(" · ");
+    badge.innerHTML = `<span>${e.last_name.toUpperCase()}</span><span class="icons">${icons.join("")}</span><span class="del" data-id="${e.id}">${icon("x")}</span>`;
     badge.addEventListener("click", (ev) => {
       if (ev.target.classList.contains("del")) return;
       fillEmployeeForm(e);
@@ -380,7 +391,7 @@ async function loadConstraints() {
     g.days.sort((a, b) => a - b);
     const row = document.createElement("div");
     row.className = "constraint-row";
-    row.innerHTML = `<span>${employeeName(g.employee_id)} — ${t("type_" + g.type) || g.type} (${g.days[0]}–${g.days[g.days.length - 1]})</span><span class="del">✕</span>`;
+    row.innerHTML = `<span>${employeeName(g.employee_id)} — ${t("type_" + g.type) || g.type} (${g.days[0]}–${g.days[g.days.length - 1]})</span><span class="del">${icon("x")}</span>`;
     row.querySelector(".del").addEventListener("click", async () => {
       for (const id of g.ids) await api(`/constraints/${id}`, { method: "DELETE" });
       await loadConstraints();
@@ -485,7 +496,7 @@ async function loadOverrides() {
         .replace("{name}", employeeName(o.employee_id))
         .replace("{day}", o.day)
         .replace("{type}", t("type_" + o.assignment) || o.assignment);
-      row.innerHTML = `<span>${label}</span><span class="del">✕</span>`;
+      row.innerHTML = `<span>${label}</span><span class="del">${icon("x")}</span>`;
       row.querySelector(".del").addEventListener("click", async () => {
         await api(`/planning/override/${o.id}`, { method: "DELETE" });
         await loadOverrides();
@@ -743,8 +754,8 @@ function renderCounts() {
     const ok = c.work === expectedWork && c.rest === expectedRest;
     const row = document.createElement("div");
     row.className = "count-row " + (ok ? "ok" : "warn");
-    const otBadge = otDays.length > 0 ? ` 🟢+${otDays.length}` : "";
-    row.textContent = `${ok ? "✅" : "⚠️"} ${e.last_name.toUpperCase()}: ${c.work}/${target}${otBadge}${t("lbl_work_short")} (${c.night} notti) — ${c.rest}/${restDue}${t("lbl_rest_short")}`;
+    const otBadge = otDays.length > 0 ? `<span class="ot-badge">+${otDays.length}</span>` : "";
+    row.innerHTML = `<span class="label">${icon(ok ? "check-circle" : "warning")}${e.last_name.toUpperCase()}</span><span class="figures">${c.work}/${target}${otBadge}${t("lbl_work_short")} (${c.night} notti) — ${c.rest}/${restDue}${t("lbl_rest_short")}</span>`;
     el.appendChild(row);
   });
 }
@@ -929,7 +940,7 @@ async function checkMonthBoundary() {
   });
 
   if (issues.length > 0) {
-    box.innerHTML = `<strong>${t("boundary_warning_title")}</strong><ul>${issues.map(i => `<li>${i}</li>`).join("")}</ul>`;
+    box.innerHTML = `<strong>${icon("warning")}${t("boundary_warning_title")}</strong><ul>${issues.map(i => `<li>${i}</li>`).join("")}</ul>`;
     box.classList.remove("hidden");
   }
 }

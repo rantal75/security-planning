@@ -17,6 +17,7 @@ progressivo a ogni modifica. Versione corrente visibile anche nell'interfaccia
 | v25.0 | 2026-09-04 | Prima consegna della nuova architettura: riscrittura completa da Colab/ipywidgets a FastAPI + SQLite + frontend web (vedi sezione "Cosa è cambiato rispetto alla v24.85" più sotto). |
 | v25.1 | 2026-09-04 | Sostituite tutte le emoji dell'interfaccia (☀️🌙👑🥈🥉⏳🛡️📥🖨️🛠️⚠️ ecc.) con un set di icone SVG disegnate su misura, in stile "console operativa". Palette e font invariati. |
 | v25.2 | 2026-09-05 | Corretta la visualizzazione delle icone: su alcuni browser risultavano enormi e spingevano fuori pagina la lista dipendenti. Aggiunte dimensioni esplicite alle icone SVG e reso più robusto il layout a "pillola" (chip) delle preferenze, con andare a capo automatico per una migliore visualizzazione anche su tablet. |
+| v25.3 | 2026-11-09 | Riunite le due linee di lavoro: le funzioni sviluppate a settembre partendo dalla v25.0 (straordinario e giorni di recupero, planning salvati e visualizzazione in sola lettura, correzioni manuali con avvisi, continuità con il mese precedente, orientamento di stampa) ora usano le icone SVG e il layout della v25.2. Sostituite con icone anche le emoji rimaste nelle parti nuove (nuove icone: salva, occhio, indietro, archivio, straordinario in verde). |
 
 ## Struttura
 

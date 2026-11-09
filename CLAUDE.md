@@ -66,21 +66,34 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   `app.js`; rinforzato il CSS delle `.chip` (`flex: 0 0 auto` su chip/input/
   icona) e aggiunto `flex-wrap: wrap` a `.field-row` per non rompere il
   layout su tablet (768px) e PC.
+- **v25.3** — Le funzioni sviluppate a settembre (straordinario/recupero,
+  planning salvati, correzioni manuali, continuità mese precedente) erano
+  partite dalla v25.0 senza le icone: riunite con la v25.2. Le emoji delle
+  parti nuove sono diventate icone SVG (`save`, `eye`, `arrow-left`,
+  `archive`, `plus-circle` — quest'ultima con classe `icon-ot`, verde
+  come lo straordinario). Regola: un elemento con icona tiene `data-i18n`
+  su uno `<span>` interno, mai sull'elemento stesso, perché `applyI18n()`
+  sostituisce `textContent` e cancellerebbe l'icona.
 
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su
-`https://github.com/rantal75/security-planning` (branch `master`, remote
-`origin` già configurato). L'utente lavora su questa cartella dal suo PC
-Windows in un virtualenv Python 3.12 (`.venv`, creato con `py -3.12`, perché
-Python 3.14 non è compatibile con `pydantic-core`/PyO3 al momento).
+`https://github.com/rantal75/security-planning` (branch locale `master`,
+che corrisponde a `main` su GitHub). La cartella sta su Google Drive
+(`G:\Il mio Drive\Lavoro\Prog planning\security-planning`) e l'utente ci
+lavora da due PC Windows. Serve Python 3.12 (Python 3.14 non è compatibile
+con `pydantic-core`/PyO3 al momento). Ogni PC ha il suo virtualenv: il
+`.venv` dentro la cartella è quello del portatile; sul PC fisso il
+virtualenv è `C:\venvs\security-planning`, fuori da Drive. Non avviare il
+gestionale su entrambi i PC insieme: `planning.db` è sincronizzato da Drive.
 
 ## Avvio locale
 
 ```bash
 cd security-planning
-.venv\Scripts\activate        # Windows
+.venv\Scripts\activate        # portatile
 uvicorn backend.main:app --reload
+# PC fisso: C:\venvs\security-planning\Scripts\uvicorn backend.main:app --reload
 ```
 
 Poi aprire il browser su http://127.0.0.1:8000/. Il database `planning.db`
