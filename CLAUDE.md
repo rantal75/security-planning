@@ -116,6 +116,8 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   `checkRuleViolations()` senza le quote mensili. Prossimo passo (v25.9):
   esterni dell'agenzia **Boss** (sigla tipo "AG"/"BOSS", fuori da quote e
   riepiloghi), messi solo a mano e sostituibili poi da un collega.
+  Conferme: mai `confirm()` nativo (il pannello browser dell'app lo
+  blocca e risponde "no"): usare `await askConfirm(msg)` in `app.js`.
 
 ## Repository Git
 

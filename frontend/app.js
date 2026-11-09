@@ -97,6 +97,7 @@ const I18N = {
     constraint_added: "Aggiunto. Premi \"Genera planning\" per applicarlo.",
     err_day_order: "\"Al giorno\" deve essere uguale o successivo a \"Dal giorno\".",
     err_generic: "Operazione non riuscita: {msg}",
+    btn_cancel: "Annulla", btn_ok: "Conferma",
     // v25.8 — variazioni su un planning salvato
     var_title: "Variazioni: assenze e sostituzioni",
     var_hint: "Il planning salvato non viene ricalcolato: i giorni che non tocchi restano come sono. Segna chi è assente, poi scegli chi lo sostituisce tra i colleghi di riposo. Ogni sostituzione matura un giorno di recupero.",
@@ -217,6 +218,7 @@ const I18N = {
     constraint_added: "Ajouté. Cliquez sur \"Générer le planning\" pour l'appliquer.",
     err_day_order: "\"Au jour\" doit être égal ou postérieur à \"Du jour\".",
     err_generic: "Opération échouée : {msg}",
+    btn_cancel: "Annuler", btn_ok: "Confirmer",
     // v25.8 — modifications d'un planning enregistré
     var_title: "Modifications : absences et remplacements",
     var_hint: "Le planning enregistré n'est pas recalculé : les jours non modifiés restent tels quels. Indiquez qui est absent, puis choisissez qui le remplace parmi les collègues au repos. Chaque remplacement donne droit à un jour de récupération.",
@@ -267,6 +269,33 @@ function t(key) { return I18N[LANG][key] || key; }
 // Restituisce il markup di un'icona SVG dallo sprite in index.html (vedi <defs>).
 function icon(name, extraClass = "") {
   return `<svg class="icon ${extraClass}" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
+}
+
+// Conferma dentro la pagina (v25.8) al posto di confirm() del browser:
+// alcuni browser (es. il pannello browser dell'app) bloccano le finestre
+// native e rispondono "no" da soli. Ritorna una Promise<boolean>.
+function askConfirm(message) {
+  const overlay = document.getElementById("confirm-overlay");
+  document.getElementById("confirm-text").textContent = message;
+  overlay.classList.remove("hidden");
+  const yes = document.getElementById("confirm-yes");
+  const no = document.getElementById("confirm-no");
+  yes.focus();
+  return new Promise(resolve => {
+    const done = (answer) => {
+      overlay.classList.add("hidden");
+      yes.removeEventListener("click", onYes);
+      no.removeEventListener("click", onNo);
+      document.removeEventListener("keydown", onKey);
+      resolve(answer);
+    };
+    const onYes = () => done(true);
+    const onNo = () => done(false);
+    const onKey = (ev) => { if (ev.key === "Escape") done(false); };
+    yes.addEventListener("click", onYes);
+    no.addEventListener("click", onNo);
+    document.addEventListener("keydown", onKey);
+  });
 }
 
 function applyI18n() {
@@ -366,7 +395,7 @@ function renderEmployeeList() {
     });
     badge.querySelector(".del").addEventListener("click", async (ev) => {
       ev.stopPropagation();
-      if (!confirm(`${e.last_name.toUpperCase()} — confermi l'eliminazione?`)) return;
+      if (!await askConfirm(`${e.last_name.toUpperCase()} — confermi l'eliminazione?`)) return;
       await api(`/employees/${e.id}`, { method: "DELETE" });
       await loadEmployees();
     });
@@ -533,7 +562,7 @@ document.getElementById("c-day-from").addEventListener("change", () => {
 
 document.getElementById("btn-clear-constraints").addEventListener("click", async () => {
   const { year, month } = currentPeriod();
-  if (!confirm(t("btn_reset_constraints") + "?")) return;
+  if (!await askConfirm(t("btn_reset_constraints") + "?")) return;
   await api(`/constraints?year=${year}&month=${month}`, { method: "DELETE" });
   await loadConstraints();
   await loadRecoveryBalances();
@@ -669,7 +698,7 @@ async function loadOverrides() {
 
 document.getElementById("btn-clear-overrides").addEventListener("click", async () => {
   const { year, month } = currentPeriod();
-  if (!confirm(t("btn_reset_overrides") + "?")) return;
+  if (!await askConfirm(t("btn_reset_overrides") + "?")) return;
   await api(`/planning/overrides?year=${year}&month=${month}`, { method: "DELETE" });
   await loadOverrides();
 });
@@ -1018,7 +1047,7 @@ document.getElementById("btn-save-planning").addEventListener("click", async () 
       await doSave(false);
     } catch (e) {
       if (e.message === "already_saved") {
-        if (!confirm(t("confirm_overwrite_saved"))) {
+        if (!await askConfirm(t("confirm_overwrite_saved"))) {
           saveStatus.textContent = "";
           return;
         }
@@ -1302,7 +1331,7 @@ document.getElementById("correction-form").addEventListener("submit", async (ev)
     const msg = t("correction_warning_intro") + "\n\n"
       + warnings.map(w => "• " + formatWarning(w)).join("\n")
       + "\n\n" + t("correction_warning_confirm");
-    if (!confirm(msg)) return;
+    if (!await askConfirm(msg)) return;
   }
 
   await api("/planning/override", { method: "POST", body: JSON.stringify(payload) });
@@ -1424,7 +1453,7 @@ function renderVariations() {
           .replace("{absent}", employeeName(v.replaces_id)).replace("{shift}", shiftLabel(v.shift));
     row.innerHTML = `<span>${label}</span><span class="del">${icon("x")}</span>`;
     row.querySelector(".del").addEventListener("click", async () => {
-      if (!confirm(t("var_delete_confirm"))) return;
+      if (!await askConfirm(t("var_delete_confirm"))) return;
       try {
         await applyVariationResult(await api(`/planning/variations/${v.id}`, { method: "DELETE" }));
         setVariationStatus("", "");
@@ -1455,7 +1484,7 @@ function renderCandidates(container, u) {
         .replace("{absent}", employeeName(u.employee_id));
       const warnMsg = ok ? "" : t("var_sub_warn_confirm")
         .replace("{warnings}", c.warnings.map(w => "• " + formatWarning(w)).join("\n")) + "\n\n";
-      if (!confirm(warnMsg + msg)) return;
+      if (!await askConfirm(warnMsg + msg)) return;
       try {
         await applyVariationResult(await api("/planning/variations/substitute", {
           method: "POST",
