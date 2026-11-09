@@ -98,6 +98,13 @@ const I18N = {
     err_day_order: "\"Al giorno\" deve essere uguale o successivo a \"Dal giorno\".",
     err_generic: "Operazione non riuscita: {msg}",
     btn_cancel: "Annulla", btn_ok: "Conferma",
+    // v25.9 — esterni dell'agenzia Boss
+    boss_name: "BOSS (esterno agenzia)",
+    boss_info: "esterno dell'agenzia Boss · non conta nei riepiloghi né nei recuperi",
+    boss_confirm: "Un esterno dell'agenzia Boss farà {shift} il giorno {day} al posto di {absent}. Confermi?",
+    boss_row: "{day} — BOSS (esterno) copre {absent} ({shift})",
+    boss_replace: "Sostituisci con collega",
+    boss_replace_confirm: "{name} farà {shift} il giorno {day} al posto dell'esterno Boss (assente: {absent}) e maturerà un giorno di recupero. Confermi?",
     // v25.8 — variazioni su un planning salvato
     var_title: "Variazioni: assenze e sostituzioni",
     var_hint: "Il planning salvato non viene ricalcolato: i giorni che non tocchi restano come sono. Segna chi è assente, poi scegli chi lo sostituisce tra i colleghi di riposo. Ogni sostituzione matura un giorno di recupero.",
@@ -219,6 +226,13 @@ const I18N = {
     err_day_order: "\"Au jour\" doit être égal ou postérieur à \"Du jour\".",
     err_generic: "Opération échouée : {msg}",
     btn_cancel: "Annuler", btn_ok: "Confirmer",
+    // v25.9 — intérimaires de l'agence Boss
+    boss_name: "BOSS (intérimaire agence)",
+    boss_info: "intérimaire de l'agence Boss · non compté dans les récapitulatifs ni les récupérations",
+    boss_confirm: "Un intérimaire de l'agence Boss fera {shift} le {day} à la place de {absent}. Confirmer ?",
+    boss_row: "{day} — BOSS (intérimaire) remplace {absent} ({shift})",
+    boss_replace: "Remplacer par un collègue",
+    boss_replace_confirm: "{name} fera {shift} le {day} à la place de l'intérimaire Boss (absent : {absent}) et gagnera un jour de récupération. Confirmer ?",
     // v25.8 — modifications d'un planning enregistré
     var_title: "Modifications : absences et remplacements",
     var_hint: "Le planning enregistré n'est pas recalculé : les jours non modifiés restent tels quels. Indiquez qui est absent, puis choisissez qui le remplace parmi les collègues au repos. Chaque remplacement donne droit à un jour de récupération.",
@@ -367,7 +381,11 @@ async function loadEmployees() {
   renderEmployeeSelects();
 }
 
+// v25.9: esterno dell'agenzia Boss (id speciale "BOSS:<id assente>").
+function isBoss(id) { return typeof id === "string" && id.startsWith("BOSS:"); }
+
 function employeeName(id) {
+  if (isBoss(id)) return t("boss_name");
   const e = EMPLOYEES.find(x => x.id === id);
   return e ? `${e.last_name.toUpperCase()} ${e.first_name}` : id;
 }
@@ -883,6 +901,7 @@ function renderPlanningTable() {
         if (highlight && s === shortName(highlight)) s = `<mark class="hl">${s}</mark>`;
         if (otToday.has(id)) s = `<span class="ot-name" title="${t("overtime_panel_title")}">${s}</span>`;
         if (varAbsent.has(`${d}|${id}`)) s = `<span class="var-abs" title="${t("var_title")}">${s}</span>`;
+        if (isBoss(id)) s = `<span class="boss-name" title="${t("boss_name")}">${s}</span>`;
         return s;
       })
       .join(",");
@@ -915,6 +934,7 @@ function overtimeIdsForDay(day) {
 }
 
 function shortName(id) {
+  if (isBoss(id)) return "BOSS";
   const e = EMPLOYEES.find(x => x.id === id);
   if (!e) return "??";
   // short_code arriva dal backend (main.py._compute_short_codes): di
@@ -1422,14 +1442,21 @@ function renderVariations() {
   const uncovered = LAST_RESULT.uncovered || [];
   const variations = LAST_RESULT.variations || [];
 
+  // v25.9: i turni coperti da un esterno Boss restano in elenco (bordo
+  // viola), per poterli passare a un collega quando dà disponibilità.
+  const bossCovered = variations.filter(v => v.kind === "esterno")
+    .map(v => ({ day: v.day, shift: v.shift, employee_id: v.replaces_id, boss: true }));
+  const items = [...uncovered, ...bossCovered].sort((a, b) => a.day - b.day);
+
   const ul = document.getElementById("uncovered-list");
-  ul.innerHTML = uncovered.length ? "" : `<div class="status-msg">${t("var_no_uncovered")}</div>`;
-  uncovered.forEach(u => {
+  ul.innerHTML = items.length ? "" : `<div class="status-msg">${t("var_no_uncovered")}</div>`;
+  items.forEach(u => {
     const box = document.createElement("div");
-    box.className = "uncovered-item";
+    box.className = "uncovered-item" + (u.boss ? " boss-covered" : "");
+    const who = u.boss ? ` → <span class="boss-name">BOSS</span>` : "";
     box.innerHTML = `<div class="uncovered-head">
-        <span><strong>${dayLabel(u.day)}</strong> — ${shiftLabel(u.shift)} — ${employeeName(u.employee_id)}</span>
-        <button type="button" class="btn small info">${icon("users")}<span>${t("var_find_sub")}</span></button>
+        <span><strong>${dayLabel(u.day)}</strong> — ${shiftLabel(u.shift)} — ${employeeName(u.employee_id)}${who}</span>
+        <button type="button" class="btn small info">${icon("users")}<span>${t(u.boss ? "boss_replace" : "var_find_sub")}</span></button>
       </div><div class="candidates hidden"></div>`;
     const cands = box.querySelector(".candidates");
     box.querySelector("button").addEventListener("click", () => {
@@ -1444,8 +1471,11 @@ function renderVariations() {
   vl.innerHTML = variations.length ? "" : `<div class="status-msg">${t("var_no_variations")}</div>`;
   variations.forEach(v => {
     const row = document.createElement("div");
-    row.className = "constraint-row " + (v.kind === "assenza" ? "var-row-abs" : "var-row-sub");
-    const label = v.kind === "assenza"
+    row.className = "constraint-row " + ({ assenza: "var-row-abs", esterno: "var-row-boss" }[v.kind] || "var-row-sub");
+    const label = v.kind === "esterno"
+      ? t("boss_row").replace("{day}", dayLabel(v.day)).replace("{absent}", employeeName(v.replaces_id))
+          .replace("{shift}", shiftLabel(v.shift))
+      : v.kind === "assenza"
       ? t("var_absent_row").replace("{day}", dayLabel(v.day)).replace("{name}", employeeName(v.employee_id))
           .replace("{type}", t("type_" + v.absence_type))
         + (v.shift === "giorno" || v.shift === "notte" ? t("var_had_shift").replace("{shift}", shiftLabel(v.shift)) : "")
@@ -1465,11 +1495,7 @@ function renderVariations() {
 
 function renderCandidates(container, u) {
   const list = substituteCandidates(u.day, u.shift);
-  if (list.length === 0) {
-    container.innerHTML = `<div class="status-msg">${t("var_no_candidates")}</div>`;
-    return;
-  }
-  container.innerHTML = "";
+  container.innerHTML = list.length ? "" : `<div class="status-msg">${t("var_no_candidates")}</div>`;
   list.forEach(c => {
     const ok = c.warnings.length === 0;
     const row = document.createElement("div");
@@ -1479,7 +1505,7 @@ function renderCandidates(container, u) {
       <span class="cand-info">${reasons} · ${t("var_extra_month").replace("{n}", c.extra)}</span>
       <button type="button" class="btn small ${ok ? "primary" : "ghost"}">${t("var_confirm_btn")}</button>`;
     row.querySelector("button").addEventListener("click", async () => {
-      const msg = t("var_sub_confirm").replace("{name}", employeeName(c.e.id))
+      const msg = t(u.boss ? "boss_replace_confirm" : "var_sub_confirm").replace("{name}", employeeName(c.e.id))
         .replace("{shift}", shiftLabel(u.shift)).replace("{day}", dayLabel(u.day))
         .replace("{absent}", employeeName(u.employee_id));
       const warnMsg = ok ? "" : t("var_sub_warn_confirm")
@@ -1496,6 +1522,29 @@ function renderCandidates(container, u) {
     });
     container.appendChild(row);
   });
+
+  // v25.9: in fondo, l'esterno dell'agenzia Boss (solo per turni ancora
+  // scoperti). Non conta in quote, riepiloghi e recuperi.
+  if (u.boss) return;
+  const row = document.createElement("div");
+  row.className = "candidate-row boss";
+  row.innerHTML = `<span class="cand-name">${icon("users")}<span class="boss-name">BOSS</span></span>
+    <span class="cand-info">${t("boss_info")}</span>
+    <button type="button" class="btn small ghost">${t("var_confirm_btn")}</button>`;
+  row.querySelector("button").addEventListener("click", async () => {
+    const msg = t("boss_confirm").replace("{shift}", shiftLabel(u.shift)).replace("{day}", dayLabel(u.day))
+      .replace("{absent}", employeeName(u.employee_id));
+    if (!await askConfirm(msg)) return;
+    try {
+      await applyVariationResult(await api("/planning/variations/external", {
+        method: "POST",
+        body: JSON.stringify({ year: LAST_RESULT.year, month: LAST_RESULT.month, day: u.day,
+                               replaces_id: u.employee_id }),
+      }));
+      setVariationStatus("", "");
+    } catch (e) { setVariationStatus(variationErrorText(e), "error"); }
+  });
+  container.appendChild(row);
 }
 
 document.getElementById("variation-form").addEventListener("submit", async (ev) => {

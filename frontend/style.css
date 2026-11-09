@@ -497,3 +497,12 @@ table.planning .uncovered-badge { display: inline-block; padding: 0 4px; border-
 .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; }
 .confirm-actions .btn { margin-top: 0; }
 @media print { .confirm-overlay { display: none !important; } }
+
+/* v25.9: esterni dell'agenzia Boss */
+:root { --boss: #B48CEB; }
+.boss-name { color: var(--boss); font-weight: 700; }
+.uncovered-item.boss-covered { border-color: var(--boss); background: var(--panel-raised); }
+.candidate-row.boss { border-style: dashed; border-color: var(--boss); }
+.candidate-row.boss .cand-name .icon { color: var(--boss); }
+.var-row-boss { border-left: 3px solid var(--boss); }
+@media print { table.planning .boss-name { color: #6A3FB5 !important; } }

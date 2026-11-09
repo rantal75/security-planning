@@ -118,6 +118,16 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   riepiloghi), messi solo a mano e sostituibili poi da un collega.
   Conferme: mai `confirm()` nativo (il pannello browser dell'app lo
   blocca e risponde "no"): usare `await askConfirm(msg)` in `app.js`.
+- **v25.9** — Esterni dell'agenzia **Boss**: variazione `kind="esterno"`
+  con `employee_id = "BOSS:<replaces_id>"` (un id per turno coperto; non è
+  un dipendente, la FK non è applicata da SQLite). In `_effective_saved`
+  entra nel turno ma NON in `overtime_days`; niente recupero; filtrato da
+  `_record_holidays`; `excel_export.short_name` e `shortName()`/
+  `employeeName()` in `app.js` lo mostrano come "BOSS" (`isBoss()`).
+  API `POST /api/planning/variations/external`. Una sostituzione con un
+  collega su un turno coperto da Boss rimpiazza l'esterno (stessa
+  chiamata `/substitute`). Annullare l'assenza toglie anche l'esterno.
+  Il motore non è stato toccato.
 
 ## Repository Git
 

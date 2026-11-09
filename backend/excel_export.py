@@ -32,6 +32,8 @@ def short_name(employees_by_id: dict, eid: str) -> str:
     main.py._compute_short_codes — 2 lettere di default, allungata solo
     per chi altrimenti collide con un collega), altrimenti ricade sul
     troncamento a 2 lettere (compatibilità se il campo manca)."""
+    if str(eid).startswith("BOSS:"):  # v25.9: esterno agenzia Boss
+        return "BOSS"
     e = employees_by_id.get(eid)
     if not e:
         return "??"

@@ -194,7 +194,10 @@ class PlanningVariation(Base):
     nessun turno scoperto.
     kind="sostituzione": `employee_id`, che quel giorno era di riposo, fa
     il turno `shift` al posto di `replaces_id`. Ogni sostituzione matura
-    un giorno di recupero (vedi main.py, bilancio recuperi)."""
+    un giorno di recupero (vedi main.py, bilancio recuperi).
+    kind="esterno" (v25.9): un esterno dell'agenzia Boss fa il turno
+    `shift` al posto di `replaces_id`; `employee_id` = "BOSS:<replaces_id>"
+    (non è un dipendente: niente quote, recuperi o storico feste)."""
     __tablename__ = "planning_variations"
     __table_args__ = (UniqueConstraint("year", "month", "day", "employee_id", name="uq_variation_slot"),)
 
@@ -202,7 +205,7 @@ class PlanningVariation(Base):
     year = Column(Integer, nullable=False)
     month = Column(Integer, nullable=False)
     day = Column(Integer, nullable=False)
-    kind = Column(String, nullable=False)  # assenza/sostituzione
+    kind = Column(String, nullable=False)  # assenza/sostituzione/esterno (v25.9: Boss)
     employee_id = Column(String, ForeignKey("employees.id"), nullable=False)
     absence_type = Column(String, nullable=True)  # malattia/ferie (solo assenza)
     shift = Column(String, nullable=True)  # giorno/notte

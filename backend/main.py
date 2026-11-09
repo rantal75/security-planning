@@ -324,6 +324,11 @@ def _load_saved_days(db: Session, year: int, month: int) -> dict | None:
 
 ABSENCE_TYPES = ("malattia", "ferie")
 WORK_SHIFTS = ("giorno", "notte")
+# v25.9: esterno dell'agenzia Boss. Non è un dipendente: nei giorni del
+# planning compare con l'id speciale "BOSS:<id dell'assente>" (uno per
+# turno coperto), fuori da quote, riepiloghi, recuperi e storico feste.
+BOSS_PREFIX = "BOSS:"
+COVERING_KINDS = ("sostituzione", "esterno")
 
 
 def _slot_of(rd: dict, eid: str) -> str | None:
@@ -364,7 +369,7 @@ def _effective_saved(db: Session, row) -> dict:
     variations = _month_variations(db, row.year, row.month)
     covered = set()
     for v in variations:
-        if v.kind == "sostituzione":
+        if v.kind in COVERING_KINDS:
             covered.add((v.day, v.replaces_id))
 
     uncovered = []
@@ -387,6 +392,8 @@ def _effective_saved(db: Session, row) -> dict:
                     uncovered.append({"day": v.day, "shift": v.shift, "employee_id": eid})
             elif v.shift == "riposo" and eid in rest_due:
                 rest_due[eid] -= 1
+        elif v.kind == "esterno":  # v25.9: Boss, nessuno straordinario
+            rd.setdefault(v.shift, []).append(eid)
         else:  # sostituzione
             rd.setdefault(v.shift, []).append(eid)
             overtime.setdefault(eid, [])
@@ -485,13 +492,45 @@ def add_substitution(payload: schemas.SubstitutionIn):
                       and v.replaces_id == payload.replaces_id for v in variations)
         if not absence or already:
             raise HTTPException(409, "not_uncovered")
+        # v25.9: se il turno è coperto da un esterno Boss, il collega lo
+        # rimpiazza (l'esterno viene tolto nella stessa operazione).
+        boss = next((v for v in variations if v.kind == "esterno" and v.day == payload.day
+                     and v.replaces_id == payload.replaces_id), None)
         eff = _effective_saved(db, row)
         rd = eff["days"].get(str(payload.day)) or {}
         if _slot_of(rd, payload.employee_id) != "riposo":
             raise HTTPException(409, "not_resting")
+        if boss:
+            db.delete(boss)
+            db.flush()
         db.add(models.PlanningVariation(
             year=row.year, month=row.month, day=payload.day, kind="sostituzione",
             employee_id=payload.employee_id, shift=absence.shift,
+            replaces_id=payload.replaces_id,
+        ))
+        db.flush()
+        return _after_variation_change(db, row)
+    finally:
+        db.close()
+
+
+@app.post("/api/planning/variations/external")
+def add_external(payload: schemas.ExternalIn):
+    """v25.9: un esterno dell'agenzia Boss copre il turno di un assente.
+    Scelto solo a mano; il motore non lo usa mai."""
+    db = db_session()
+    try:
+        row = _saved_row_or_404(db, payload.year, payload.month)
+        variations = _month_variations(db, row.year, row.month)
+        absence = next((v for v in variations if v.kind == "assenza" and v.day == payload.day
+                        and v.employee_id == payload.replaces_id and v.shift in WORK_SHIFTS), None)
+        already = any(v.kind in COVERING_KINDS and v.day == payload.day
+                      and v.replaces_id == payload.replaces_id for v in variations)
+        if not absence or already:
+            raise HTTPException(409, "not_uncovered")
+        db.add(models.PlanningVariation(
+            year=row.year, month=row.month, day=payload.day, kind="esterno",
+            employee_id=BOSS_PREFIX + payload.replaces_id, shift=absence.shift,
             replaces_id=payload.replaces_id,
         ))
         db.flush()
@@ -511,9 +550,11 @@ def delete_variation(variation_id: int):
             raise HTTPException(404, "Variazione non trovata")
         row = _saved_row_or_404(db, v.year, v.month)
         if v.kind == "assenza":
-            db.query(models.PlanningVariation).filter_by(
-                year=v.year, month=v.month, day=v.day, kind="sostituzione", replaces_id=v.employee_id,
-            ).delete()
+            db.query(models.PlanningVariation).filter(
+                models.PlanningVariation.year == v.year, models.PlanningVariation.month == v.month,
+                models.PlanningVariation.day == v.day, models.PlanningVariation.replaces_id == v.employee_id,
+                models.PlanningVariation.kind.in_(COVERING_KINDS),
+            ).delete(synchronize_session=False)
         db.delete(v)
         db.flush()
         return _after_variation_change(db, row)
@@ -558,6 +599,7 @@ def _record_holidays(db: Session, year: int, month: int, days: dict):
     else:
         return
 
+    entries = [(eid, h) for eid, h in entries if not str(eid).startswith(BOSS_PREFIX)]  # v25.9
     db.query(models.HolidayHistory).filter_by(year=holiday_year, source=source).delete()
     db.flush()
     for eid, holiday in entries:

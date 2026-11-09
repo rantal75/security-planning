@@ -79,6 +79,14 @@ class SubstitutionIn(BaseModel):
     replaces_id: str
 
 
+class ExternalIn(BaseModel):
+    """v25.9: esterno dell'agenzia Boss al posto di un assente."""
+    year: int
+    month: int = Field(ge=1, le=12)
+    day: int = Field(ge=1, le=31)
+    replaces_id: str
+
+
 class SavePlanningIn(BaseModel):
     year: int
     month: int = Field(ge=1, le=12)
