@@ -119,7 +119,7 @@
         <span class="brand-title" data-i18n="app_title">Gestione Sicurezza</span>
         <span class="brand-sub" data-i18n="app_sub">Planning turni H24</span>
       </div>
-      <span class="version-tag" title="Versione applicazione">v25.7</span>
+      <span class="version-tag" title="Versione applicazione">v25.8</span>
     </div>
     <div class="topbar-right">
       <div class="lang-toggle">
@@ -303,8 +303,41 @@
       </div>
 
       <div id="view-saved-banner" class="view-banner hidden">
-        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-eye"></use></svg><span data-i18n="viewing_saved_banner">Stai visionando un planning salvato (sola lettura).</span>
+        <svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-eye"></use></svg><span data-i18n="viewing_saved_banner">Stai visionando un planning salvato: non viene ricalcolato, puoi solo aggiungere variazioni (assenze e sostituzioni).</span>
         <button type="button" id="btn-exit-view" class="btn small"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-arrow-left"></use></svg><span data-i18n="btn_exit_view">Torna al planning corrente</span></button>
+      </div>
+
+      <!-- v25.8: variazioni manuali su un planning salvato (il motore non viene rilanciato) -->
+      <div id="variations-card" class="card variations-card hidden">
+        <h2><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-users"></use></svg><span data-i18n="var_title">Variazioni: assenze e sostituzioni</span></h2>
+        <p class="status-msg" data-i18n="var_hint">Il planning salvato non viene ricalcolato: i giorni che non tocchi restano come sono. Segna chi è assente, poi scegli chi lo sostituisce tra i colleghi di riposo. Ogni sostituzione matura un giorno di recupero.</p>
+        <form id="variation-form" class="field-row wrap">
+          <label class="grow">
+            <span data-i18n="lbl_employee">Dipendente</span>
+            <select id="v-employee"></select>
+          </label>
+          <label>
+            <span data-i18n="lbl_from">Dal giorno</span>
+            <input type="number" id="v-from" min="1" max="31" value="1">
+          </label>
+          <label>
+            <span data-i18n="lbl_to">Al giorno</span>
+            <input type="number" id="v-to" min="1" max="31" value="1">
+          </label>
+          <label>
+            <span data-i18n="lbl_type">Tipo</span>
+            <select id="v-type">
+              <option value="malattia" data-i18n="type_malattia">Malattia</option>
+              <option value="ferie" data-i18n="type_ferie">Ferie</option>
+            </select>
+          </label>
+          <button type="submit" class="btn primary"><span data-i18n="btn_mark_absent">Segna assenza</span></button>
+        </form>
+        <div id="variation-status" class="status-msg"></div>
+        <h3><svg class="icon icon-alert" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-warning"></use></svg><span data-i18n="var_uncovered_title">Turni scoperti</span></h3>
+        <div id="uncovered-list" class="uncovered-list"></div>
+        <h3 data-i18n="var_list_title">Variazioni inserite</h3>
+        <div id="variation-list" class="constraint-list"></div>
       </div>
 
       <div class="card">

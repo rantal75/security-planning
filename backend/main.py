@@ -149,6 +149,9 @@ def _recovery_balance(db: Session, employee_id: str) -> dict:
     Cumulativo e non per-mese, perché il credito può essere speso "nel mese
     successivo o anche in quello corrente", come richiesto."""
     earned = db.query(models.RecoveryEarned).filter_by(employee_id=employee_id).count()
+    # v25.8: ogni sostituzione su un planning salvato matura un recupero.
+    earned += db.query(models.PlanningVariation).filter_by(
+        employee_id=employee_id, kind="sostituzione").count()
     spent = (
         db.query(models.ManualConstraint)
         .filter_by(employee_id=employee_id, type="recupero")
@@ -176,6 +179,15 @@ def recovery_balances():
             .all()
         )
         earned_map = dict(earned_rows)
+        # v25.8: ogni sostituzione su un planning salvato matura un recupero.
+        subst_rows = (
+            db.query(models.PlanningVariation.employee_id, func.count(models.PlanningVariation.id))
+            .filter(models.PlanningVariation.kind == "sostituzione")
+            .group_by(models.PlanningVariation.employee_id)
+            .all()
+        )
+        for eid, n in subst_rows:
+            earned_map[eid] = earned_map.get(eid, 0) + n
         spent_map = dict(spent_rows)
         return [
             {
@@ -297,8 +309,237 @@ def _load_holiday_history(db: Session, before_year: int) -> dict:
 
 
 def _load_saved_days(db: Session, year: int, month: int) -> dict | None:
+    """Giorni EFFETTIVI di un mese salvato (snapshot + variazioni v25.8):
+    li usano gennaio (1° gennaio dopo il dicembre salvato) e i controlli di
+    continuità, che devono vedere chi ha lavorato davvero."""
     row = db.query(models.SavedPlanning).filter_by(year=year, month=month).first()
-    return row.days if row else None
+    return _effective_saved(db, row)["days"] if row else None
+
+
+# ---------------------------------------------------------------------
+# Variazioni su un planning salvato (v25.8). Il motore NON viene mai
+# rilanciato: lo snapshot resta com'è e le variazioni (assenze e
+# sostituzioni inserite a mano) vengono sovrapposte quando lo si legge.
+# ---------------------------------------------------------------------
+
+ABSENCE_TYPES = ("malattia", "ferie")
+WORK_SHIFTS = ("giorno", "notte")
+
+
+def _slot_of(rd: dict, eid: str) -> str | None:
+    """Dove sta `eid` in un giorno: giorno/notte/riposo/ferie/malattia/chef."""
+    for k in ("giorno", "notte", "riposo", "ferie", "malattia"):
+        if eid in (rd.get(k) or []):
+            return k
+    if rd.get("chef") == eid:
+        return "chef"
+    return None
+
+
+def _month_variations(db: Session, year: int, month: int) -> list:
+    return (
+        db.query(models.PlanningVariation)
+        .filter_by(year=year, month=month)
+        .order_by(models.PlanningVariation.day, models.PlanningVariation.id)
+        .all()
+    )
+
+
+def _effective_saved(db: Session, row) -> dict:
+    """Snapshot salvato + variazioni. Restituisce la stessa struttura di
+    SavedPlanning.to_dict() (così la UI la disegna come sempre), più:
+    - variations: elenco delle variazioni del mese;
+    - uncovered: turni rimasti scoperti per un'assenza [{day, shift, employee_id}].
+    Quote del riepilogo: un'assenza su un giorno di lavoro abbassa la quota
+    di lavoro, su un giorno di riposo quella di riposo; una sostituzione
+    conta come giorno di straordinario (overtime_days), quindi il
+    riepilogo resta in linea."""
+    data = row.to_dict(include_days=True)
+    days = {str(k): {kk: (list(vv) if isinstance(vv, list) else vv) for kk, vv in v.items()}
+            for k, v in (data["days"] or {}).items()}
+    targets = dict(data["targets"] or {})
+    rest_due = dict(data["riposi_dovuti"] or {})
+    overtime = {k: list(v) for k, v in (data["overtime_days"] or {}).items()}
+
+    variations = _month_variations(db, row.year, row.month)
+    covered = set()
+    for v in variations:
+        if v.kind == "sostituzione":
+            covered.add((v.day, v.replaces_id))
+
+    uncovered = []
+    for v in sorted(variations, key=lambda x: 0 if x.kind == "assenza" else 1):
+        rd = days.get(str(v.day))
+        if rd is None:
+            continue
+        eid = v.employee_id
+        for k in ("giorno", "notte", "riposo"):
+            if eid in rd.get(k, []):
+                rd[k].remove(eid)
+        if v.kind == "assenza":
+            if rd.get("chef") == eid:
+                rd["chef"] = None
+            rd.setdefault(v.absence_type, []).append(eid)
+            if v.shift in WORK_SHIFTS:
+                if eid in targets:
+                    targets[eid] -= 1
+                if (v.day, eid) not in covered:
+                    uncovered.append({"day": v.day, "shift": v.shift, "employee_id": eid})
+            elif v.shift == "riposo" and eid in rest_due:
+                rest_due[eid] -= 1
+        else:  # sostituzione
+            rd.setdefault(v.shift, []).append(eid)
+            overtime.setdefault(eid, [])
+            if v.day not in overtime[eid]:
+                overtime[eid].append(v.day)
+
+    data.update({
+        "days": days,
+        "targets": targets,
+        "riposi_dovuti": rest_due,
+        "overtime_days": overtime,
+        "variations": [v.to_dict() for v in variations],
+        "uncovered": uncovered,
+    })
+    return data
+
+
+def _saved_row_or_404(db: Session, year: int, month: int):
+    row = db.query(models.SavedPlanning).filter_by(year=year, month=month).first()
+    if not row:
+        raise HTTPException(404, "not_saved")
+    return row
+
+
+def _after_variation_change(db: Session, row) -> dict:
+    """Dopo ogni variazione: aggiorna lo storico Natale/Capodanno (se è
+    dicembre o gennaio) con i giorni effettivi e restituisce il planning."""
+    eff = _effective_saved(db, row)
+    _record_holidays(db, row.year, row.month, eff["days"])
+    db.commit()
+    return _effective_saved(db, row)
+
+
+@app.get("/api/planning/variations")
+def list_variations(year: int, month: int):
+    db = db_session()
+    try:
+        return [v.to_dict() for v in _month_variations(db, year, month)]
+    finally:
+        db.close()
+
+
+@app.post("/api/planning/variations/absence")
+def add_absence_variation(payload: schemas.AbsenceVariationIn):
+    if payload.absence_type not in ABSENCE_TYPES:
+        raise HTTPException(400, "Tipo di assenza non valido")
+    if payload.day_to < payload.day_from:
+        raise HTTPException(400, "day_order")
+    db = db_session()
+    try:
+        row = _saved_row_or_404(db, payload.year, payload.month)
+        if payload.day_to > row.num_days:
+            raise HTTPException(400, "day_out_of_month")
+        emp = db.query(models.Employee).get(payload.employee_id)
+        if not emp:
+            raise HTTPException(404, "Dipendente non trovato")
+
+        existing = {(v.day, v.employee_id): v for v in _month_variations(db, row.year, row.month)}
+        snapshot = row.days or {}
+        added = 0
+        for d in range(payload.day_from, payload.day_to + 1):
+            v = existing.get((d, payload.employee_id))
+            if v and v.kind == "sostituzione":
+                # Prima va annullata la sostituzione che fa quel giorno.
+                raise HTTPException(409, {"error": "is_substitute", "day": d})
+            if v:  # già assente quel giorno: aggiorna solo il tipo
+                v.absence_type = payload.absence_type
+                continue
+            rd = snapshot.get(str(d)) or snapshot.get(d) or {}
+            slot = _slot_of(rd, payload.employee_id)
+            if slot in ("ferie", "malattia") or slot is None:
+                continue  # già assente nello snapshot (o non in squadra)
+            db.add(models.PlanningVariation(
+                year=row.year, month=row.month, day=d, kind="assenza",
+                employee_id=payload.employee_id, absence_type=payload.absence_type,
+                shift=slot,
+            ))
+            added += 1
+        db.flush()
+        result = _after_variation_change(db, row)
+        result["added"] = added
+        return result
+    finally:
+        db.close()
+
+
+@app.post("/api/planning/variations/substitute")
+def add_substitution(payload: schemas.SubstitutionIn):
+    db = db_session()
+    try:
+        row = _saved_row_or_404(db, payload.year, payload.month)
+        variations = _month_variations(db, row.year, row.month)
+        absence = next((v for v in variations if v.kind == "assenza" and v.day == payload.day
+                        and v.employee_id == payload.replaces_id and v.shift in WORK_SHIFTS), None)
+        already = any(v.kind == "sostituzione" and v.day == payload.day
+                      and v.replaces_id == payload.replaces_id for v in variations)
+        if not absence or already:
+            raise HTTPException(409, "not_uncovered")
+        eff = _effective_saved(db, row)
+        rd = eff["days"].get(str(payload.day)) or {}
+        if _slot_of(rd, payload.employee_id) != "riposo":
+            raise HTTPException(409, "not_resting")
+        db.add(models.PlanningVariation(
+            year=row.year, month=row.month, day=payload.day, kind="sostituzione",
+            employee_id=payload.employee_id, shift=absence.shift,
+            replaces_id=payload.replaces_id,
+        ))
+        db.flush()
+        return _after_variation_change(db, row)
+    finally:
+        db.close()
+
+
+@app.delete("/api/planning/variations/{variation_id}")
+def delete_variation(variation_id: int):
+    """Annulla una variazione. Annullare un'assenza annulla anche la
+    sostituzione collegata (il collega torna di riposo)."""
+    db = db_session()
+    try:
+        v = db.query(models.PlanningVariation).get(variation_id)
+        if not v:
+            raise HTTPException(404, "Variazione non trovata")
+        row = _saved_row_or_404(db, v.year, v.month)
+        if v.kind == "assenza":
+            db.query(models.PlanningVariation).filter_by(
+                year=v.year, month=v.month, day=v.day, kind="sostituzione", replaces_id=v.employee_id,
+            ).delete()
+        db.delete(v)
+        db.flush()
+        return _after_variation_change(db, row)
+    finally:
+        db.close()
+
+
+@app.get("/api/planning/saved/{year}/{month}/export")
+def export_saved_excel(year: int, month: int, lang: str = "IT"):
+    """Excel di un planning salvato, variazioni comprese (le sostituzioni
+    in verde come lo straordinario). Non rilancia il motore."""
+    db = db_session()
+    try:
+        row = _saved_row_or_404(db, year, month)
+        eff = _effective_saved(db, row)
+        days_int = {int(k): v for k, v in eff["days"].items()}
+        xlsx_bytes = build_excel(year, month, days_int, _load_employees(db), lang=lang,
+                                 overtime_days=eff["overtime_days"])
+        filename = f"Planning_{year}_{month:02d}.xlsx"
+        return Response(
+            content=xlsx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    finally:
+        db.close()
 
 
 def _record_holidays(db: Session, year: int, month: int, days: dict):
@@ -500,6 +741,11 @@ def save_planning(payload: schemas.SavePlanningIn):
             # Il chiamante deve confermare esplicitamente la sovrascrittura
             # di un mese già salvato in precedenza.
             raise HTTPException(409, "already_saved")
+        if existing and db.query(models.PlanningVariation).filter_by(
+                year=payload.year, month=payload.month).count() > 0:
+            # v25.8: risalvare rigenera il mese col motore e le variazioni
+            # non corrisponderebbero più. Vanno annullate prima.
+            raise HTTPException(409, "has_variations")
 
         _, result = _generate_full(
             db, payload.year, payload.month, payload.chef_present,
@@ -581,7 +827,7 @@ def get_saved_planning(year: int, month: int):
         )
         if not row:
             raise HTTPException(404, "Nessun planning salvato per questo mese")
-        return row.to_dict(include_days=True)
+        return _effective_saved(db, row)  # snapshot + variazioni (v25.8)
     finally:
         db.close()
 

@@ -100,6 +100,22 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   mesi che finiscono di domenica → `range(1, nd)`. Il cambio lingua ora
   ridisegna anche il riepilogo (`lbl_nights` al posto di "notti" fisso).
   Proposta per il futuro: conto annuale dei weekend lavorati per ruotarli.
+- **v25.8** — Variazioni su un planning SALVATO (tabella
+  `planning_variations`, modello `PlanningVariation`). Il motore NON viene
+  rilanciato (scelta dell'utente: il motore funziona e non va toccato):
+  `_effective_saved()` in `main.py` sovrappone allo snapshot le righe
+  `assenza` (campo `shift` = dove stava nello snapshot) e `sostituzione`
+  (`replaces_id`), abbassa le quote del riepilogo per le assenze e mette
+  le sostituzioni in `overtime_days` (verde). Lo usano GET saved, export
+  del salvato (`/api/planning/saved/{y}/{m}/export`) e `_load_saved_days`
+  (gennaio/continuità vedono i giorni effettivi). Ogni sostituzione conta
+  come recupero maturato (`_recovery_balance` e `/api/recovery/balances`).
+  Risalvare un mese con variazioni → 409 `has_variations`. Annullare
+  un'assenza annulla anche la sua sostituzione. Suggerimenti sostituti in
+  `substituteCandidates()` (`app.js`): colleghi di riposo, regole di
+  `checkRuleViolations()` senza le quote mensili. Prossimo passo (v25.9):
+  esterni dell'agenzia **Boss** (sigla tipo "AG"/"BOSS", fuori da quote e
+  riepiloghi), messi solo a mano e sostituibili poi da un collega.
 
 ## Repository Git
 

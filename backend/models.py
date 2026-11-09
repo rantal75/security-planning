@@ -183,6 +183,47 @@ class HolidayHistory(Base):
         }
 
 
+class PlanningVariation(Base):
+    """Variazione manuale (v25.8) applicata SOPRA un planning già salvato,
+    senza rilanciare il motore: lo snapshot in SavedPlanning resta com'era
+    e le variazioni vengono sovrapposte quando lo si legge.
+
+    kind="assenza": `employee_id` quel giorno è assente (`absence_type` =
+    malattia/ferie); `shift` = il turno che aveva nello snapshot
+    (giorno/notte), oppure None se era di riposo — in quel caso non resta
+    nessun turno scoperto.
+    kind="sostituzione": `employee_id`, che quel giorno era di riposo, fa
+    il turno `shift` al posto di `replaces_id`. Ogni sostituzione matura
+    un giorno di recupero (vedi main.py, bilancio recuperi)."""
+    __tablename__ = "planning_variations"
+    __table_args__ = (UniqueConstraint("year", "month", "day", "employee_id", name="uq_variation_slot"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    year = Column(Integer, nullable=False)
+    month = Column(Integer, nullable=False)
+    day = Column(Integer, nullable=False)
+    kind = Column(String, nullable=False)  # assenza/sostituzione
+    employee_id = Column(String, ForeignKey("employees.id"), nullable=False)
+    absence_type = Column(String, nullable=True)  # malattia/ferie (solo assenza)
+    shift = Column(String, nullable=True)  # giorno/notte
+    replaces_id = Column(String, nullable=True)  # solo sostituzione
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "year": self.year,
+            "month": self.month,
+            "day": self.day,
+            "kind": self.kind,
+            "employee_id": self.employee_id,
+            "absence_type": self.absence_type,
+            "shift": self.shift,
+            "replaces_id": self.replaces_id,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 class SavedPlanning(Base):
     """Snapshot "definitivo" del planning per un mese (motore + correzioni
     manuali già applicate), salvato esplicitamente dall'utente dopo la

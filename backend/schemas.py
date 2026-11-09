@@ -60,6 +60,25 @@ class HolidayHistoryIn(BaseModel):
     holiday: str  # natale/capodanno
 
 
+class AbsenceVariationIn(BaseModel):
+    """v25.8: assenza aggiunta a un planning già salvato."""
+    year: int
+    month: int = Field(ge=1, le=12)
+    day_from: int = Field(ge=1, le=31)
+    day_to: int = Field(ge=1, le=31)
+    employee_id: str
+    absence_type: str  # malattia/ferie
+
+
+class SubstitutionIn(BaseModel):
+    """v25.8: un collega di riposo copre il turno di un assente."""
+    year: int
+    month: int = Field(ge=1, le=12)
+    day: int = Field(ge=1, le=31)
+    employee_id: str
+    replaces_id: str
+
+
 class SavePlanningIn(BaseModel):
     year: int
     month: int = Field(ge=1, le=12)

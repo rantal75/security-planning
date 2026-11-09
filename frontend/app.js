@@ -59,7 +59,7 @@ const I18N = {
     planning_saved_ok: "Planning salvato.",
     planning_save_error: "Errore durante il salvataggio del planning.",
     confirm_overwrite_saved: "Questo mese è già stato salvato in precedenza. Vuoi sovrascrivere il planning salvato con quello attuale?",
-    viewing_saved_banner: "Stai visionando un planning salvato (sola lettura).",
+    viewing_saved_banner: "Stai visionando un planning salvato: non viene ricalcolato, puoi solo aggiungere variazioni (assenze e sostituzioni).",
     btn_exit_view: "Torna al planning corrente",
     saved_title: "Planning salvati",
     lbl_saved_month: "Mese salvato",
@@ -97,6 +97,33 @@ const I18N = {
     constraint_added: "Aggiunto. Premi \"Genera planning\" per applicarlo.",
     err_day_order: "\"Al giorno\" deve essere uguale o successivo a \"Dal giorno\".",
     err_generic: "Operazione non riuscita: {msg}",
+    // v25.8 — variazioni su un planning salvato
+    var_title: "Variazioni: assenze e sostituzioni",
+    var_hint: "Il planning salvato non viene ricalcolato: i giorni che non tocchi restano come sono. Segna chi è assente, poi scegli chi lo sostituisce tra i colleghi di riposo. Ogni sostituzione matura un giorno di recupero.",
+    btn_mark_absent: "Segna assenza",
+    var_uncovered_title: "Turni scoperti",
+    var_list_title: "Variazioni inserite",
+    var_no_uncovered: "Nessun turno scoperto.",
+    var_no_variations: "Nessuna variazione per questo mese.",
+    var_uncovered_badge: "SCOPERTO",
+    var_find_sub: "Trova sostituto",
+    var_confirm_btn: "Conferma",
+    var_no_candidates: "Nessun collega di riposo quel giorno.",
+    var_ok_rules: "rispetta le regole",
+    var_extra_month: "{n} giorni extra nel mese",
+    var_absent_row: "{day} — {name}: {type}",
+    var_had_shift: " (aveva {shift})",
+    var_sub_row: "{day} — {name} sostituisce {absent} ({shift}) · +1 recupero",
+    var_added: "Assenza inserita. I turni rimasti scoperti sono qui sotto.",
+    var_added_none: "Niente da cambiare: in quei giorni il dipendente era già assente.",
+    var_sub_confirm: "{name} farà {shift} il giorno {day} al posto di {absent} e maturerà un giorno di recupero. Confermi?",
+    var_sub_warn_confirm: "Attenzione, questa sostituzione non rispetta alcune regole:\n\n{warnings}\n\nVuoi confermarla comunque?",
+    var_delete_confirm: "Annullare questa variazione? Se è un'assenza, viene annullata anche l'eventuale sostituzione di quel giorno.",
+    err_is_substitute: "Il giorno {day} questo dipendente fa già una sostituzione: annullala prima.",
+    err_not_uncovered: "Questo turno è già coperto.",
+    err_not_resting: "Il collega scelto non è più di riposo quel giorno.",
+    err_day_out_of_month: "Il giorno è fuori dal mese.",
+    err_has_variations: "Questo mese ha delle variazioni (assenze/sostituzioni). Risalvarlo rigenererebbe tutto col motore: annulla prima le variazioni.",
   },
   FR: {
     app_title: "Gestion Sécurité", app_sub: "Planning des équipes H24",
@@ -152,7 +179,7 @@ const I18N = {
     planning_saved_ok: "Planning enregistré.",
     planning_save_error: "Erreur lors de l'enregistrement du planning.",
     confirm_overwrite_saved: "Ce mois a déjà été enregistré. Voulez-vous écraser le planning enregistré avec celui-ci ?",
-    viewing_saved_banner: "Vous consultez un planning enregistré (lecture seule).",
+    viewing_saved_banner: "Vous consultez un planning enregistré : il n'est pas recalculé, vous pouvez seulement ajouter des modifications (absences et remplacements).",
     btn_exit_view: "Revenir au planning en cours",
     saved_title: "Plannings enregistrés",
     lbl_saved_month: "Mois enregistré",
@@ -190,6 +217,33 @@ const I18N = {
     constraint_added: "Ajouté. Cliquez sur \"Générer le planning\" pour l'appliquer.",
     err_day_order: "\"Au jour\" doit être égal ou postérieur à \"Du jour\".",
     err_generic: "Opération échouée : {msg}",
+    // v25.8 — modifications d'un planning enregistré
+    var_title: "Modifications : absences et remplacements",
+    var_hint: "Le planning enregistré n'est pas recalculé : les jours non modifiés restent tels quels. Indiquez qui est absent, puis choisissez qui le remplace parmi les collègues au repos. Chaque remplacement donne droit à un jour de récupération.",
+    btn_mark_absent: "Marquer l'absence",
+    var_uncovered_title: "Postes non couverts",
+    var_list_title: "Modifications saisies",
+    var_no_uncovered: "Aucun poste non couvert.",
+    var_no_variations: "Aucune modification pour ce mois.",
+    var_uncovered_badge: "NON COUVERT",
+    var_find_sub: "Trouver un remplaçant",
+    var_confirm_btn: "Confirmer",
+    var_no_candidates: "Aucun collègue au repos ce jour-là.",
+    var_ok_rules: "respecte les règles",
+    var_extra_month: "{n} jours en plus ce mois",
+    var_absent_row: "{day} — {name} : {type}",
+    var_had_shift: " (avait {shift})",
+    var_sub_row: "{day} — {name} remplace {absent} ({shift}) · +1 récupération",
+    var_added: "Absence enregistrée. Les postes non couverts sont ci-dessous.",
+    var_added_none: "Rien à changer : l'agent était déjà absent ces jours-là.",
+    var_sub_confirm: "{name} fera {shift} le {day} à la place de {absent} et gagnera un jour de récupération. Confirmer ?",
+    var_sub_warn_confirm: "Attention, ce remplacement ne respecte pas certaines règles :\n\n{warnings}\n\nVoulez-vous le confirmer quand même ?",
+    var_delete_confirm: "Annuler cette modification ? Si c'est une absence, le remplacement éventuel de ce jour est aussi annulé.",
+    err_is_substitute: "Le {day}, cet agent fait déjà un remplacement : annulez-le d'abord.",
+    err_not_uncovered: "Ce poste est déjà couvert.",
+    err_not_resting: "Le collègue choisi n'est plus au repos ce jour-là.",
+    err_day_out_of_month: "Le jour est en dehors du mois.",
+    err_has_variations: "Ce mois a des modifications (absences/remplacements). L'enregistrer à nouveau recalculerait tout : annulez d'abord les modifications.",
   },
 };
 
@@ -242,6 +296,7 @@ document.querySelectorAll(".lang-btn").forEach(btn => {
     renderEmployeeSelects();
     populateMonthYear();
     if (LAST_RESULT) { renderPlanningTable(); renderCounts(); }
+    if (VIEWING_SAVED) renderVariations();
     loadRecoveryBalances();
     loadHolidayHistory();
     loadConstraints();
@@ -777,6 +832,14 @@ function renderPlanningTable() {
     <th>${t("col_chef")}</th><th>${t("col_ferie")}</th><th>${t("col_malattia")}</th>
   </tr></thead><tbody>`;
 
+  // v25.8: variazioni di un mese salvato — assenti segnati, turni scoperti.
+  const varAbsent = new Set();
+  const uncoveredByDay = {};
+  if (VIEWING_SAVED) {
+    (LAST_RESULT.variations || []).forEach(v => { if (v.kind === "assenza") varAbsent.add(`${v.day}|${v.employee_id}`); });
+    (LAST_RESULT.uncovered || []).forEach(u => { (uncoveredByDay[u.day] ||= []).push(u); });
+  }
+
   for (let d = 1; d <= LAST_RESULT.num_days; d++) {
     const dt = new Date(LAST_RESULT.year, LAST_RESULT.month - 1, d);
     const weekday = (dt.getDay() + 6) % 7; // 0 = lunedì
@@ -784,22 +847,25 @@ function renderPlanningTable() {
     const rd = LAST_RESULT.days[d];
     const otToday = overtimeIdsForDay(d);
 
-    const fmt = (ids) => ids
+    const fmt = (ids) => (ids || [])
       .slice().sort()
       .map(id => {
         let s = shortName(id);
         if (highlight && s === shortName(highlight)) s = `<mark class="hl">${s}</mark>`;
         if (otToday.has(id)) s = `<span class="ot-name" title="${t("overtime_panel_title")}">${s}</span>`;
+        if (varAbsent.has(`${d}|${id}`)) s = `<span class="var-abs" title="${t("var_title")}">${s}</span>`;
         return s;
       })
       .join(",");
+    const holes = (shift) => (uncoveredByDay[d] || []).filter(u => u.shift === shift)
+      .map(u => ` <span class="uncovered-badge" title="${shortName(u.employee_id)}">${t("var_uncovered_badge")}</span>`).join("");
 
     const chefName = rd.chef ? shortName(rd.chef) : "";
 
     html += `<tr class="${isWeekend ? "weekend" : ""}">
       <td>${daysAbbr[weekday]}</td><td>${d}</td>
-      <td class="col-giorno">${fmt(rd.giorno)}</td>
-      <td class="col-notte">${fmt(rd.notte)}</td>
+      <td class="col-giorno">${fmt(rd.giorno)}${holes("giorno")}</td>
+      <td class="col-notte">${fmt(rd.notte)}${holes("notte")}</td>
       <td class="col-riposo">${fmt(rd.riposo)}</td>
       <td class="col-chef">${chefName}</td>
       <td class="col-ferie">${fmt(rd.ferie)}</td>
@@ -974,6 +1040,11 @@ document.getElementById("btn-save-planning").addEventListener("click", async () 
     // Dicembre e gennaio aggiornano lo storico Natale/Capodanno (v25.4).
     await loadHolidayHistory();
   } catch (e) {
+    if (e.message === "has_variations") {
+      saveStatus.textContent = t("err_has_variations");
+      saveStatus.className = "status-msg error";
+      return;
+    }
     saveStatus.textContent = t("planning_save_error") + formatDiagnosis(e.detail && e.detail.diagnosis);
     saveStatus.className = "status-msg error";
   }
@@ -986,8 +1057,10 @@ function setViewingSaved(on) {
   document.querySelectorAll("#correction-form input, #correction-form select, #correction-form button")
     .forEach(el => { el.disabled = on; });
   document.getElementById("btn-save-planning").disabled = on;
-  document.getElementById("btn-export").disabled = on;
+  // v25.8: l'export di un mese salvato usa lo snapshot + variazioni.
+  document.getElementById("btn-export").disabled = false;
   document.getElementById("btn-clear-overrides").disabled = on;
+  document.getElementById("variations-card").classList.toggle("hidden", !on);
 }
 
 document.getElementById("btn-view-saved").addEventListener("click", async () => {
@@ -1002,6 +1075,8 @@ document.getElementById("btn-view-saved").addEventListener("click", async () => 
     populateHighlightSelect();
     renderPlanningTable();
     renderCounts();
+    resetVariationForm();
+    renderVariations();
     document.getElementById("boundary-warnings").classList.add("hidden");
   } catch (e) {
     // nessun planning salvato per quel mese (non dovrebbe accadere, la
@@ -1245,9 +1320,184 @@ document.getElementById("correction-form").addEventListener("submit", async (ev)
 });
 
 // ---------------------------------------------------------------
+// Variazioni su un planning salvato (v25.8): assenze e sostituzioni
+// inserite a mano. Il motore non viene rilanciato: il backend sovrappone
+// le variazioni allo snapshot (main.py, _effective_saved) e restituisce
+// il mese aggiornato, che sostituisce LAST_RESULT.
+// ---------------------------------------------------------------
+
+function dayLabel(d) {
+  const dt = new Date(LAST_RESULT.year, LAST_RESULT.month - 1, d);
+  return `${I18N[LANG].days_abbr[(dt.getDay() + 6) % 7]} ${d}`;
+}
+
+function shiftLabel(shift) { return t("type_" + shift); }
+
+function resetVariationForm() {
+  const sel = document.getElementById("v-employee");
+  sel.innerHTML = EMPLOYEES.filter(e => !e.is_titular)
+    .map(e => `<option value="${e.id}">${employeeName(e.id)}</option>`).join("");
+  const max = LAST_RESULT ? LAST_RESULT.num_days : 31;
+  ["v-from", "v-to"].forEach(id => { const el = document.getElementById(id); el.max = max; });
+  document.getElementById("variation-status").textContent = "";
+}
+
+// Come nel form vincoli: "Al giorno" non resta mai prima di "Dal giorno".
+document.getElementById("v-from").addEventListener("change", () => {
+  const from = document.getElementById("v-from"), to = document.getElementById("v-to");
+  if (parseInt(to.value) < parseInt(from.value)) to.value = from.value;
+});
+
+function setVariationStatus(text, kind) {
+  const el = document.getElementById("variation-status");
+  el.textContent = text;
+  el.className = "status-msg" + (kind ? " " + kind : "");
+}
+
+function variationErrorText(e) {
+  const key = "err_" + e.message;
+  if (I18N[LANG][key]) return t(key).replace("{day}", (e.detail && e.detail.day) || "");
+  return t("err_generic").replace("{msg}", e.message);
+}
+
+// Mostra il mese aggiornato dopo una variazione.
+async function applyVariationResult(result) {
+  LAST_RESULT = result;
+  renderPlanningTable();
+  renderCounts();
+  renderVariations();
+  await loadRecoveryBalances();
+}
+
+// Colleghi che possono coprire `shift` il giorno `day`: chi quel giorno è
+// di riposo (capo titolare escluso). Per ognuno, le regole di sicurezza
+// del motore che verrebbero violate (stesso controllo della correzione
+// manuale, senza le quote mensili: il giorno in più è voluto e diventa
+// straordinario). Ordine: prima chi rispetta tutte le regole, poi chi ha
+// fatto meno giorni extra nel mese, poi chi ha lavorato meno.
+function substituteCandidates(day, shift) {
+  return EMPLOYEES
+    .filter(e => !e.is_titular && getAssignment(day, e.id) === "riposo")
+    .map(e => {
+      const warnings = checkRuleViolations(day, e.id, shift)
+        .filter(w => typeof w === "string" && w !== "warn_4_consecutive_rest");
+      const extra = ((LAST_RESULT.overtime_days || {})[e.id] || []).length;
+      return { e, warnings, extra, work: countMonthlyTotals(e.id).work };
+    })
+    .sort((a, b) => (a.warnings.length > 0) - (b.warnings.length > 0)
+      || a.extra - b.extra || a.work - b.work);
+}
+
+function renderVariations() {
+  if (!LAST_RESULT || !VIEWING_SAVED) return;
+  const uncovered = LAST_RESULT.uncovered || [];
+  const variations = LAST_RESULT.variations || [];
+
+  const ul = document.getElementById("uncovered-list");
+  ul.innerHTML = uncovered.length ? "" : `<div class="status-msg">${t("var_no_uncovered")}</div>`;
+  uncovered.forEach(u => {
+    const box = document.createElement("div");
+    box.className = "uncovered-item";
+    box.innerHTML = `<div class="uncovered-head">
+        <span><strong>${dayLabel(u.day)}</strong> — ${shiftLabel(u.shift)} — ${employeeName(u.employee_id)}</span>
+        <button type="button" class="btn small info">${icon("users")}<span>${t("var_find_sub")}</span></button>
+      </div><div class="candidates hidden"></div>`;
+    const cands = box.querySelector(".candidates");
+    box.querySelector("button").addEventListener("click", () => {
+      if (!cands.classList.contains("hidden")) { cands.classList.add("hidden"); return; }
+      renderCandidates(cands, u);
+      cands.classList.remove("hidden");
+    });
+    ul.appendChild(box);
+  });
+
+  const vl = document.getElementById("variation-list");
+  vl.innerHTML = variations.length ? "" : `<div class="status-msg">${t("var_no_variations")}</div>`;
+  variations.forEach(v => {
+    const row = document.createElement("div");
+    row.className = "constraint-row " + (v.kind === "assenza" ? "var-row-abs" : "var-row-sub");
+    const label = v.kind === "assenza"
+      ? t("var_absent_row").replace("{day}", dayLabel(v.day)).replace("{name}", employeeName(v.employee_id))
+          .replace("{type}", t("type_" + v.absence_type))
+        + (v.shift === "giorno" || v.shift === "notte" ? t("var_had_shift").replace("{shift}", shiftLabel(v.shift)) : "")
+      : t("var_sub_row").replace("{day}", dayLabel(v.day)).replace("{name}", employeeName(v.employee_id))
+          .replace("{absent}", employeeName(v.replaces_id)).replace("{shift}", shiftLabel(v.shift));
+    row.innerHTML = `<span>${label}</span><span class="del">${icon("x")}</span>`;
+    row.querySelector(".del").addEventListener("click", async () => {
+      if (!confirm(t("var_delete_confirm"))) return;
+      try {
+        await applyVariationResult(await api(`/planning/variations/${v.id}`, { method: "DELETE" }));
+        setVariationStatus("", "");
+      } catch (e) { setVariationStatus(variationErrorText(e), "error"); }
+    });
+    vl.appendChild(row);
+  });
+}
+
+function renderCandidates(container, u) {
+  const list = substituteCandidates(u.day, u.shift);
+  if (list.length === 0) {
+    container.innerHTML = `<div class="status-msg">${t("var_no_candidates")}</div>`;
+    return;
+  }
+  container.innerHTML = "";
+  list.forEach(c => {
+    const ok = c.warnings.length === 0;
+    const row = document.createElement("div");
+    row.className = "candidate-row " + (ok ? "ok" : "warn");
+    const reasons = ok ? t("var_ok_rules") : c.warnings.map(w => formatWarning(w)).join(" ");
+    row.innerHTML = `<span class="cand-name">${icon(ok ? "check-circle" : "warning")}${employeeName(c.e.id)}</span>
+      <span class="cand-info">${reasons} · ${t("var_extra_month").replace("{n}", c.extra)}</span>
+      <button type="button" class="btn small ${ok ? "primary" : "ghost"}">${t("var_confirm_btn")}</button>`;
+    row.querySelector("button").addEventListener("click", async () => {
+      const msg = t("var_sub_confirm").replace("{name}", employeeName(c.e.id))
+        .replace("{shift}", shiftLabel(u.shift)).replace("{day}", dayLabel(u.day))
+        .replace("{absent}", employeeName(u.employee_id));
+      const warnMsg = ok ? "" : t("var_sub_warn_confirm")
+        .replace("{warnings}", c.warnings.map(w => "• " + formatWarning(w)).join("\n")) + "\n\n";
+      if (!confirm(warnMsg + msg)) return;
+      try {
+        await applyVariationResult(await api("/planning/variations/substitute", {
+          method: "POST",
+          body: JSON.stringify({ year: LAST_RESULT.year, month: LAST_RESULT.month, day: u.day,
+                                 employee_id: c.e.id, replaces_id: u.employee_id }),
+        }));
+        setVariationStatus("", "");
+      } catch (e) { setVariationStatus(variationErrorText(e), "error"); }
+    });
+    container.appendChild(row);
+  });
+}
+
+document.getElementById("variation-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  if (!LAST_RESULT || !VIEWING_SAVED) return;
+  const from = parseInt(document.getElementById("v-from").value);
+  const to = parseInt(document.getElementById("v-to").value);
+  if (!from || !to || to < from) { setVariationStatus(t("err_day_order"), "error"); return; }
+  try {
+    const result = await api("/planning/variations/absence", {
+      method: "POST",
+      body: JSON.stringify({
+        year: LAST_RESULT.year, month: LAST_RESULT.month, day_from: from, day_to: to,
+        employee_id: document.getElementById("v-employee").value,
+        absence_type: document.getElementById("v-type").value,
+      }),
+    });
+    await applyVariationResult(result);
+    setVariationStatus(result.added > 0 ? t("var_added") : t("var_added_none"), "ok");
+  } catch (e) { setVariationStatus(variationErrorText(e), "error"); }
+});
+
+// ---------------------------------------------------------------
 // Export / Stampa
 // ---------------------------------------------------------------
 document.getElementById("btn-export").addEventListener("click", () => {
+  if (VIEWING_SAVED && LAST_RESULT) {
+    // v25.8: mese salvato → Excel dello snapshot con le variazioni.
+    window.location.href = `${API}/planning/saved/${LAST_RESULT.year}/${LAST_RESULT.month}/export?lang=${LANG}`;
+    return;
+  }
   const { year, month } = currentPeriod();
   const chef_present = document.getElementById("p-chef-present").checked;
   const otIds = OVERTIME_SELECTION.ids.join(",");
