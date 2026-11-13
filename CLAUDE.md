@@ -129,6 +129,20 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   chiamata `/substitute`). Annullare l'assenza toglie anche l'esterno.
   Il motore non è stato toccato.
 
+- **v25.10** — Login (`backend/auth.py`, middleware `require_login` in
+  `main.py`). Attivo SOLO con env `PLANNING_AUTH=1` (in `planning.service`
+  sul server); senza, nessun controllo (uso locale sui PC). Utenti in
+  `users.json` (hash scrypt) e chiave cookie in `session.key`, entrambi nella
+  cartella di lavoro, gitignorati e MAI su Drive/Git. Cookie `zp_planning`
+  firmato HMAC (`utente|scadenza|firma`, la firma include un pezzo dell'hash:
+  cambiare password chiude le sessioni). Aperti senza login solo
+  `auth.OPEN_PATHS` (`/login`, `/style.css`, login/logout). `/api/*` senza
+  sessione → 401 (`api()` in `app.js` porta a `/login`), il resto → 303 a
+  `/login`. 5 errori per IP → 429 per 5 minuti (in memoria). Pagina
+  `frontend/login.html` (IT/FR, lingua in `localStorage.planning_lang`, che
+  ora ricorda anche la lingua del planning). Gestione utenti:
+  `python -m backend.auth imposta|elenco|rimuovi`.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su

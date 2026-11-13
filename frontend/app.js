@@ -6,7 +6,7 @@ const API = "/api";
 
 const I18N = {
   IT: {
-    app_title: "Gestione Sicurezza", app_sub: "Planning turni H24",
+    app_title: "Gestione Sicurezza", app_sub: "Planning turni H24", btn_logout: "Esci",
     tab_staff: "Personale", tab_constraints: "Ferie & Vincoli", tab_planning: "Planning",
     staff_form_title: "Aggiungi / modifica dipendente",
     lbl_lastname: "Cognome", lbl_firstname: "Nome",
@@ -134,7 +134,7 @@ const I18N = {
     err_has_variations: "Questo mese ha delle variazioni (assenze/sostituzioni). Risalvarlo rigenererebbe tutto col motore: annulla prima le variazioni.",
   },
   FR: {
-    app_title: "Gestion Sécurité", app_sub: "Planning des équipes H24",
+    app_title: "Gestion Sécurité", app_sub: "Planning des équipes H24", btn_logout: "Déconnexion",
     tab_staff: "Personnel", tab_constraints: "Congés & Contraintes", tab_planning: "Planning",
     staff_form_title: "Ajouter / modifier un agent",
     lbl_lastname: "Nom", lbl_firstname: "Prénom",
@@ -334,6 +334,7 @@ document.querySelectorAll(".tab").forEach(tab => {
 document.querySelectorAll(".lang-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     LANG = btn.dataset.lang;
+    try { localStorage.setItem("planning_lang", LANG); } catch (e) {}  // la usa anche la pagina di accesso
     applyI18n();
     renderEmployeeList();
     renderEmployeeSelects();
@@ -354,6 +355,11 @@ async function api(path, options = {}) {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
+  // v25.10: sessione scaduta o mai aperta → pagina di accesso
+  if (res.status === 401) {
+    window.location.href = "/login";
+    return new Promise(() => {});
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     const detail = body.detail;
@@ -1626,8 +1632,25 @@ document.getElementById("btn-print").addEventListener("click", () => {
 // ---------------------------------------------------------------
 // Avvio
 // ---------------------------------------------------------------
+// v25.10: utente collegato e tasto Esci (solo se il login è attivo sul server)
+async function loadCurrentUser() {
+  const info = await api("/auth/me").catch(() => ({ auth: false }));
+  if (!info.auth || !info.user) return;
+  const who = document.getElementById("current-user");
+  who.textContent = info.user;
+  who.classList.remove("hidden");
+  document.getElementById("btn-logout").classList.remove("hidden");
+}
+
+document.getElementById("btn-logout").addEventListener("click", async () => {
+  await fetch(API + "/auth/logout", { method: "POST" }).catch(() => {});
+  window.location.href = "/login";
+});
+
 (async function init() {
+  try { if (localStorage.getItem("planning_lang") === "FR") LANG = "FR"; } catch (e) {}
   applyI18n();
+  loadCurrentUser();
   populateMonthYear();
   // All'avvio propone il mese prossimo (v25.6): il planning si prepara in
   // anticipo, e prima la pagina ripartiva sempre da Gennaio — ricaricando,

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accesso — Planning Turni</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+<style>
+  /* Pagina di accesso (v25.10): stessa identità visiva del planning. */
+  body { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 16px; }
+  .login-card {
+    width: 100%; max-width: 360px;
+    background: var(--panel); border: 1px solid var(--border-soft);
+    border-radius: 8px; padding: 26px 24px 22px;
+  }
+  .login-head { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .login-head .lang-toggle { margin-left: auto; }
+  .login-card label { margin-bottom: 14px; }
+  .login-card input[type="text"], .login-card input[type="password"] { width: 100%; font-size: 15px; padding: 10px 12px; }
+  .remember { flex-direction: row; align-items: center; gap: 8px; cursor: pointer; }
+  .remember input { accent-color: var(--amber); }
+  .login-card .btn.primary { width: 100%; justify-content: center; padding: 11px 16px; font-size: 14px; margin-top: 4px; }
+  .login-msg { min-height: 20px; margin: 12px 0 0; font-size: 13px; color: var(--alert); }
+</style>
+</head>
+<body>
+
+<form class="login-card" id="login-form" autocomplete="on">
+  <div class="login-head">
+    <span class="brand-mark">
+      <svg class="icon icon-lg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3l7 3v6c0 4.5-3 8-7 9-4-1-7-4.5-7-9V6l7-3z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <div class="brand-text">
+      <span class="brand-title" data-t="title">Gestione Sicurezza</span>
+      <span class="brand-sub" data-t="sub">Accesso al planning</span>
+    </div>
+    <div class="lang-toggle">
+      <button type="button" class="lang-btn" data-lang="IT">IT</button>
+      <button type="button" class="lang-btn" data-lang="FR">FR</button>
+    </div>
+  </div>
+
+  <label><span data-t="user">Utente</span>
+    <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+  </label>
+  <label><span data-t="pass">Password</span>
+    <input type="password" id="password" name="password" autocomplete="current-password" required>
+  </label>
+  <label class="remember">
+    <input type="checkbox" id="remember"> <span data-t="remember">Ricordami su questo computer (30 giorni)</span>
+  </label>
+
+  <button type="submit" class="btn primary" id="btn-login"><span data-t="enter">Entra</span></button>
+  <p class="login-msg" id="login-msg" role="alert"></p>
+</form>
+
+<script>
+const T = {
+  IT: { title: "Gestione Sicurezza", sub: "Accesso al planning", user: "Utente", pass: "Password",
+        remember: "Ricordami su questo computer (30 giorni)", enter: "Entra",
+        bad: "Utente o password non corretti.", locked: "Troppi tentativi. Riprova tra {m} minuti.",
+        error: "Server non raggiungibile. Riprova." },
+  FR: { title: "Gestion Sécurité", sub: "Accès au planning", user: "Utilisateur", pass: "Mot de passe",
+        remember: "Se souvenir de moi sur cet ordinateur (30 jours)", enter: "Entrer",
+        bad: "Utilisateur ou mot de passe incorrect.", locked: "Trop de tentatives. Réessayez dans {m} minutes.",
+        error: "Serveur injoignable. Réessayez." },
+};
+let LANG = "IT";
+try { LANG = localStorage.getItem("planning_lang") === "FR" ? "FR" : "IT"; } catch (e) {}
+
+function applyLang() {
+  document.documentElement.lang = LANG.toLowerCase();
+  document.querySelectorAll("[data-t]").forEach(el => { el.textContent = T[LANG][el.dataset.t]; });
+  document.querySelectorAll(".lang-btn").forEach(b => b.classList.toggle("active", b.dataset.lang === LANG));
+}
+document.querySelectorAll(".lang-btn").forEach(b => b.addEventListener("click", () => {
+  LANG = b.dataset.lang;
+  try { localStorage.setItem("planning_lang", LANG); } catch (e) {}
+  applyLang();
+}));
+applyLang();
+
+document.getElementById("login-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const msg = document.getElementById("login-msg");
+  const btn = document.getElementById("btn-login");
+  msg.textContent = "";
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: document.getElementById("username").value,
+        password: document.getElementById("password").value,
+        remember: document.getElementById("remember").checked,
+      }),
+    });
+    if (res.ok) { window.location.replace("/"); return; }
+    const body = await res.json().catch(() => ({}));
+    if (res.status === 429) {
+      const m = Math.max(1, Math.ceil(((body.detail && body.detail.seconds) || 300) / 60));
+      msg.textContent = T[LANG].locked.replace("{m}", m);
+    } else {
+      msg.textContent = T[LANG].bad;
+      document.getElementById("password").select();
+    }
+  } catch (e) {
+    msg.textContent = T[LANG].error;
+  } finally {
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

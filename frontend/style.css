@@ -104,6 +104,13 @@ body {
   margin-left: 4px;
 }
 
+/* Utente collegato e tasto Esci (v25.10) — visibili solo con il login attivo */
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.current-user { font-family: var(--font-data); font-size: 12px; color: var(--text-dim); }
+.logout-btn { padding: 7px 12px; font-size: 12px; }
+.current-user.hidden, .logout-btn.hidden { display: none; }
+@media print { .current-user, .logout-btn { display: none !important; } }
+
 .lang-toggle { display: flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .lang-btn {
   border: none; background: transparent; color: var(--text-dim);
@@ -168,7 +175,7 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; colo
 .advanced-fields.hidden { display: none; }
 #btn-toggle-advanced { margin-top: 4px; }
 
-input[type="text"], input[type="number"], select {
+input[type="text"], input[type="number"], input[type="password"], select {
   background: var(--panel-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius);

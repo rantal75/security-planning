@@ -13,14 +13,15 @@ poi apri http://127.0.0.1:8000/
 from calendar import monthrange
 from datetime import datetime, timezone
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from . import models, schemas
+from . import auth, models, schemas
 from .database import SessionLocal, init_db
 from .engine import ASSIGNABLE_TYPES, ShiftEngine, holiday_groups_from_december
 from .excel_export import build_excel
@@ -38,6 +39,65 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     init_db()
+
+
+# ---------------------------------------------------------------------
+# Accesso con utente e password (v25.10) — vedi backend/auth.py.
+# Attivo solo con PLANNING_AUTH=1 (server zonefpi); in locale non cambia nulla.
+# ---------------------------------------------------------------------
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    if not auth.AUTH_ENABLED or request.url.path in auth.OPEN_PATHS:
+        return await call_next(request)
+    user = auth.session_user(request.cookies.get(auth.COOKIE_NAME))
+    if user is None:
+        if request.url.path.startswith("/api/"):
+            return JSONResponse({"detail": "login_required"}, status_code=401)
+        return RedirectResponse("/login", status_code=303)
+    request.state.user = user
+    return await call_next(request)
+
+
+class LoginIn(BaseModel):
+    username: str
+    password: str
+    remember: bool = False
+
+
+@app.get("/login", include_in_schema=False)
+def login_page():
+    return FileResponse("frontend/login.html", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/auth/login")
+def login(data: LoginIn, request: Request):
+    ip = request.client.host if request.client else "?"
+    wait = auth.is_locked(ip)
+    if wait:
+        raise HTTPException(429, {"error": "locked", "seconds": wait})
+    username = data.username.strip().lower()
+    if not auth.check_credentials(username, data.password):
+        auth.record_fail(ip)
+        raise HTTPException(401, {"error": "bad_credentials"})
+    auth.clear_fails(ip)
+    value, duration = auth.make_session(username, data.remember)
+    res = JSONResponse({"user": username})
+    res.set_cookie(auth.COOKIE_NAME, value, httponly=True, samesite="lax",
+                   max_age=duration if data.remember else None)
+    return res
+
+
+@app.post("/api/auth/logout")
+def logout():
+    res = JSONResponse({"ok": True})
+    res.delete_cookie(auth.COOKIE_NAME)
+    return res
+
+
+@app.get("/api/auth/me")
+def me(request: Request):
+    return {"auth": auth.AUTH_ENABLED, "user": getattr(request.state, "user", None)}
 
 
 def db_session() -> Session:
