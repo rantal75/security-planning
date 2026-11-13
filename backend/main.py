@@ -48,15 +48,20 @@ def on_startup():
 
 @app.middleware("http")
 async def require_login(request: Request, call_next):
-    if not auth.AUTH_ENABLED or request.url.path in auth.OPEN_PATHS:
-        return await call_next(request)
-    user = auth.session_user(request.cookies.get(auth.COOKIE_NAME))
-    if user is None:
-        if request.url.path.startswith("/api/"):
-            return JSONResponse({"detail": "login_required"}, status_code=401)
-        return RedirectResponse("/login", status_code=303)
-    request.state.user = user
-    return await call_next(request)
+    if auth.AUTH_ENABLED and request.url.path not in auth.OPEN_PATHS:
+        user = auth.session_user(request.cookies.get(auth.COOKIE_NAME))
+        if user is None:
+            if request.url.path.startswith("/api/"):
+                return JSONResponse({"detail": "login_required"}, status_code=401)
+            return RedirectResponse("/login", status_code=303)
+        request.state.user = user
+    response = await call_next(request)
+    # v25.11: il browser deve sempre ricontrollare pagine, app.js e style.css
+    # (risposta "304 non cambiato" se uguali). Senza, dopo un aggiornamento
+    # teneva i file vecchi e il tasto Esci non funzionava.
+    if not request.url.path.startswith("/api/"):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
 
 
 class LoginIn(BaseModel):

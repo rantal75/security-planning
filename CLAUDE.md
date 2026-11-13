@@ -143,6 +143,13 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   ora ricorda anche la lingua del planning). Gestione utenti:
   `python -m backend.auth imposta|elenco|rimuovi`.
 
+- **v25.11** — Cache del browser: dopo il deploy della v25.10 il browser
+  teneva `app.js`/`style.css` vecchi (tasto Esci visibile ma senza effetto).
+  `require_login` aggiunge `Cache-Control: no-cache` a tutto tranne `/api/`
+  (anche senza login attivo), e `index.html`/`login.html` richiamano
+  `app.js?v=XX.Y` / `style.css?v=XX.Y`. **A ogni nuova versione aggiornare
+  anche questi `?v=`** insieme al badge.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su
