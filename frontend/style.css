@@ -76,6 +76,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;   /* v25.12: su schermi stretti utente/Esci/lingua vanno a capo */
+  gap: 12px;
   padding: 22px 0 18px;
 }
 
@@ -174,6 +176,7 @@ label { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; colo
 .advanced-fields { margin-top: 10px; padding-top: 4px; }
 .advanced-fields.hidden { display: none; }
 #btn-toggle-advanced { margin-top: 4px; }
+#btn-toggle-advanced.hidden { display: none; }  /* v25.12: utenti limitati */
 
 input[type="text"], input[type="number"], input[type="password"], select {
   background: var(--panel-raised);

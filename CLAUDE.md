@@ -150,6 +150,18 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   `app.js?v=XX.Y` / `style.css?v=XX.Y`. **A ogni nuova versione aggiornare
   anche questi `?v=`** insieme al badge.
 
+- **v25.12** — Ruoli utente (`auth.ROLES`: `completo`/`limitato`; voci di
+  `users.json` ora `{"hash", "role"}`, le vecchie stringhe valgono come
+  `completo`). `/api/auth/me` restituisce `role`. Per i limitati
+  (`_is_limited` in `main.py`): GET `/api/employees` toglie
+  `HIDDEN_FOR_LIMITED` (preferenze, aggiunto/equipe/temporaneo, peso) ma
+  lascia `is_titular` (serve al frontend per escludere il titolare da
+  sostituti/vincoli); POST ignora `LOCKED_FOR_LIMITED` (restano i valori
+  salvati o i default). Frontend: `LIMITED` in `app.js` nasconde
+  `#btn-toggle-advanced`, tiene chiuso `#emp-advanced` e toglie icone/
+  descrizione dai badge della Squadra. `loadCurrentUser()` va atteso prima
+  di `loadEmployees()`. Aggiungere/eliminare dipendenti resta permesso.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su

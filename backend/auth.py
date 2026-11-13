@@ -13,6 +13,11 @@ Gestione utenti, dal terminale del server (cartella ~/apps/planning):
   .venv/bin/python -m backend.auth imposta alex    # crea o cambia password
   .venv/bin/python -m backend.auth elenco
   .venv/bin/python -m backend.auth rimuovi momo
+  .venv/bin/python -m backend.auth ruolo momo limitato   # oppure: completo
+
+Ruoli (v25.12): "completo" vede e modifica tutto; "limitato" non vede le
+preferenze/ruoli dei dipendenti (Opzioni avanzate, icone nella Squadra) e
+non può cambiarle. Gli utenti senza ruolo indicato sono "completo".
 """
 
 import base64
@@ -35,6 +40,7 @@ SESSION_LONG = 30 * 24 * 3600      # con "Ricordami": 30 giorni
 MAX_FAILS = 5                      # tentativi sbagliati prima del blocco
 LOCK_SECONDS = 5 * 60              # durata del blocco
 MIN_PASSWORD = 8
+ROLES = ("completo", "limitato")
 
 # Percorsi raggiungibili senza essere entrati
 OPEN_PATHS = {"/login", "/style.css", "/api/auth/login", "/api/auth/logout", "/favicon.ico"}
@@ -88,12 +94,26 @@ def save_users(users: dict) -> None:
     tmp.replace(USERS_FILE)
 
 
+# Ogni utente in users.json è {"hash": "...", "role": "..."}; le voci della
+# v25.10 erano solo la stringa dell'hash: valgono ancora, con ruolo "completo".
+
+def _hash_of(entry) -> str:
+    return entry if isinstance(entry, str) else entry.get("hash", "")
+
+
+def get_role(username: str | None) -> str:
+    entry = load_users().get(username) if username else None
+    if isinstance(entry, dict) and entry.get("role") in ROLES:
+        return entry["role"]
+    return "completo"
+
+
 def check_credentials(username: str, password: str) -> bool:
-    stored = load_users().get(username)
-    if stored is None:
+    entry = load_users().get(username)
+    if entry is None:
         verify_password(password, _DUMMY_HASH)
         return False
-    return verify_password(password, stored)
+    return verify_password(password, _hash_of(entry))
 
 
 # ---------------------------------------------------------------------
@@ -117,7 +137,7 @@ def _sign(username: str, expires: int, pw_hash: str) -> str:
 def make_session(username: str, remember: bool) -> tuple[str, int]:
     duration = SESSION_LONG if remember else SESSION_SHORT
     expires = int(time.time()) + duration
-    pw_hash = load_users()[username]
+    pw_hash = _hash_of(load_users()[username])
     return f"{username}|{expires}|{_sign(username, expires, pw_hash)}", duration
 
 
@@ -132,9 +152,10 @@ def session_user(cookie: str | None) -> str | None:
         return None
     if expires < time.time():
         return None
-    pw_hash = load_users().get(username)
-    if pw_hash is None:
+    entry = load_users().get(username)
+    if entry is None:
         return None
+    pw_hash = _hash_of(entry)
     if not hmac.compare_digest(sig, _sign(username, expires, pw_hash)):
         return None
     return username
@@ -173,7 +194,10 @@ def _cli(argv: list[str]) -> int:
 
     if len(argv) >= 1 and argv[0] == "elenco":
         users = load_users()
-        print("\n".join(sorted(users)) if users else "(nessun utente)")
+        if not users:
+            print("(nessun utente)")
+        for name in sorted(users):
+            print(f"{name:12} {get_role(name)}")
         return 0
     if len(argv) == 2 and argv[0] == "imposta":
         name = argv[1].strip().lower()
@@ -189,9 +213,22 @@ def _cli(argv: list[str]) -> int:
             return 1
         users = load_users()
         nuovo = name not in users
-        users[name] = hash_password(pw)
+        users[name] = {"hash": hash_password(pw), "role": "completo" if nuovo else get_role(name)}
         save_users(users)
         print(f"Utente {name} {'creato' if nuovo else 'aggiornato'}.")
+        return 0
+    if len(argv) == 3 and argv[0] == "ruolo":
+        name, role = argv[1].strip().lower(), argv[2].strip().lower()
+        users = load_users()
+        if name not in users:
+            print("Utente non trovato.")
+            return 1
+        if role not in ROLES:
+            print("Ruolo non valido: usa completo oppure limitato.")
+            return 1
+        users[name] = {"hash": _hash_of(users[name]), "role": role}
+        save_users(users)
+        print(f"{name}: ruolo {role}.")
         return 0
     if len(argv) == 2 and argv[0] == "rimuovi":
         users = load_users()

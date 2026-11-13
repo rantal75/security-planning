@@ -264,6 +264,7 @@ const I18N = {
 };
 
 let LANG = "IT";
+let LIMITED = false; // v25.12: utente con ruolo "limitato" (vedi loadCurrentUser)
 let EMPLOYEES = [];
 let LAST_RESULT = null; // { year, month, num_days, days: {...}, targets, night_targets, riposi_dovuti, overtime_days }
 let VIEWING_SAVED = false; // true mentre si visualizza uno snapshot salvato (sola lettura)
@@ -409,6 +410,8 @@ function renderEmployeeList() {
     if (e.pref_night) { icons.push(icon("moon")); roleLabels.push(t("lbl_pref_night")); }
     else if (e.pref_day) { icons.push(icon("sun")); roleLabels.push(t("lbl_pref_day")); }
     if (e.pref_33) { icons.push(icon("repeat")); roleLabels.push(t("lbl_pref_33")); }
+    // v25.12: utenti "limitati" vedono solo il nome (niente icone né descrizione)
+    if (LIMITED) { icons.length = 0; roleLabels.length = 0; }
     const badge = document.createElement("div");
     badge.className = "emp-badge";
     badge.title = roleLabels.join(" · ");
@@ -431,6 +434,7 @@ function renderEmployeeList() {
 // Toggle "Opzioni avanzate" (preferenze, ruolo, peso) nel form dipendente
 // ---------------------------------------------------------------
 function setAdvancedOpen(open) {
+  if (LIMITED) open = false;  // v25.12: per gli utenti limitati resta sempre chiuso
   const panel = document.getElementById("emp-advanced");
   const btn = document.getElementById("btn-toggle-advanced");
   panel.classList.toggle("hidden", !open);
@@ -1633,9 +1637,16 @@ document.getElementById("btn-print").addEventListener("click", () => {
 // Avvio
 // ---------------------------------------------------------------
 // v25.10: utente collegato e tasto Esci (solo se il login è attivo sul server)
+// v25.12: ruolo "limitato" → niente Opzioni avanzate e niente icone nella Squadra.
+// Il server comunque non invia né accetta le preferenze per questi utenti.
 async function loadCurrentUser() {
   const info = await api("/auth/me").catch(() => ({ auth: false }));
   if (!info.auth || !info.user) return;
+  LIMITED = info.role === "limitato";
+  if (LIMITED) {
+    document.getElementById("btn-toggle-advanced").classList.add("hidden");
+    setAdvancedOpen(false);
+  }
   const who = document.getElementById("current-user");
   who.textContent = info.user;
   who.classList.remove("hidden");
@@ -1650,7 +1661,7 @@ document.getElementById("btn-logout").addEventListener("click", async () => {
 (async function init() {
   try { if (localStorage.getItem("planning_lang") === "FR") LANG = "FR"; } catch (e) {}
   applyI18n();
-  loadCurrentUser();
+  await loadCurrentUser();  // prima dei dipendenti: serve sapere il ruolo
   populateMonthYear();
   // All'avvio propone il mese prossimo (v25.6): il planning si prepara in
   // anticipo, e prima la pagina ripartiva sempre da Gennaio — ricaricando,

@@ -102,7 +102,27 @@ def logout():
 
 @app.get("/api/auth/me")
 def me(request: Request):
-    return {"auth": auth.AUTH_ENABLED, "user": getattr(request.state, "user", None)}
+    user = getattr(request.state, "user", None)
+    return {"auth": auth.AUTH_ENABLED, "user": user, "role": auth.get_role(user)}
+
+
+# v25.12: utenti con ruolo "limitato" (es. momo, fabrice) non vedono e non
+# cambiano preferenze/ruoli dei dipendenti. is_titular resta nei dati in
+# sola lettura: il frontend lo usa per escludere il titolare da alcune liste
+# (sostituti, vincoli), ma per loro non viene mostrato.
+HIDDEN_FOR_LIMITED = ("pref_night", "pref_day", "pref_33",
+                      "is_adjoint", "is_equipe", "is_temp", "custom_weight")
+LOCKED_FOR_LIMITED = HIDDEN_FOR_LIMITED + ("is_titular",)
+
+
+def _is_limited(request: Request) -> bool:
+    return auth.AUTH_ENABLED and auth.get_role(getattr(request.state, "user", None)) == "limitato"
+
+
+def _hide_prefs(row: dict) -> dict:
+    for field in HIDDEN_FOR_LIMITED:
+        row.pop(field, None)
+    return row
 
 
 def db_session() -> Session:
@@ -148,29 +168,40 @@ def _with_short_codes(rows: list[dict]) -> list[dict]:
 
 
 @app.get("/api/employees")
-def list_employees():
+def list_employees(request: Request):
     db = db_session()
     try:
         rows = [e.to_dict() for e in db.query(models.Employee).all()]
-        return _with_short_codes(rows)
+        rows = _with_short_codes(rows)
+        if _is_limited(request):
+            rows = [_hide_prefs(r) for r in rows]
+        return rows
     finally:
         db.close()
 
 
 @app.post("/api/employees")
-def create_employee(payload: schemas.EmployeeIn):
+def create_employee(payload: schemas.EmployeeIn, request: Request):
     db = db_session()
     try:
         eid = f"{payload.last_name.strip().upper()}_{payload.first_name.strip().upper()}"
+        data = payload.dict()
+        limited = _is_limited(request)
+        if limited:
+            # preferenze e ruoli non modificabili: restano quelli salvati
+            # (o i valori di default per un dipendente nuovo)
+            for field in LOCKED_FOR_LIMITED:
+                data.pop(field, None)
         existing = db.query(models.Employee).get(eid)
         if existing:
-            for field, value in payload.dict().items():
+            for field, value in data.items():
                 setattr(existing, field, value)
         else:
-            existing = models.Employee(id=eid, **payload.dict())
+            existing = models.Employee(id=eid, **data)
             db.add(existing)
         db.commit()
-        return existing.to_dict()
+        out = existing.to_dict()
+        return _hide_prefs(out) if limited else out
     finally:
         db.close()
 
