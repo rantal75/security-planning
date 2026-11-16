@@ -6,7 +6,7 @@
 <title>Gestione Sicurezza — Planning Turni</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=25.13">
+<link rel="stylesheet" href="style.css?v=25.14">
 </head>
 <body>
 
@@ -123,7 +123,7 @@
         <span class="brand-title" data-i18n="app_title">Gestione Sicurezza</span>
         <span class="brand-sub" data-i18n="app_sub">Planning turni H24</span>
       </div>
-      <span class="version-tag" title="Versione applicazione">v25.13</span>
+      <span class="version-tag" title="Versione applicazione">v25.14</span>
     </div>
     <div class="topbar-right">
       <span id="current-user" class="current-user hidden"></span>
@@ -394,7 +394,9 @@
             <select id="saved-select"></select>
           </label>
           <button type="button" id="btn-view-saved" class="btn ghost"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-eye"></use></svg><span data-i18n="btn_view_saved">Visualizza</span></button>
+          <button type="button" id="btn-delete-saved" class="btn danger"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><use href="#icon-x"></use></svg><span data-i18n="btn_delete_saved">Elimina</span></button>
         </div>
+        <div id="saved-status" class="status-msg"></div>
         <div id="saved-empty" class="status-msg" data-i18n="saved_empty">Nessun planning salvato per ora.</div>
       </div>
     </section>
@@ -414,6 +416,6 @@
   </div>
 </div>
 
-<script src="app.js?v=25.13"></script>
+<script src="app.js?v=25.14"></script>
 </body>
 </html>

@@ -970,6 +970,33 @@ def get_saved_planning(year: int, month: int):
         db.close()
 
 
+@app.delete("/api/planning/saved/{year}/{month}")
+def delete_saved_planning(year: int, month: int, request: Request):
+    """v25.14: elimina un planning salvato insieme a tutto ciò che nasce da
+    quel salvataggio: variazioni, giorni di recupero maturati e le righe
+    AUTOMATICHE dello storico Natale/Capodanno. Non tocca vincoli manuali,
+    righe "manuale" dello storico feste, né il motore. Solo ruolo completo."""
+    if _is_limited(request):
+        raise HTTPException(403, "Operazione non consentita per questo utente")
+    db = db_session()
+    try:
+        row = db.query(models.SavedPlanning).filter_by(year=year, month=month).first()
+        if not row:
+            raise HTTPException(404, "Nessun planning salvato per questo mese")
+
+        db.query(models.PlanningVariation).filter_by(year=year, month=month).delete()
+        db.query(models.RecoveryEarned).filter_by(year=year, month=month).delete()
+        if month == 12:
+            db.query(models.HolidayHistory).filter_by(year=year, source="auto_dic").delete()
+        elif month == 1:
+            db.query(models.HolidayHistory).filter_by(year=year - 1, source="auto_gen").delete()
+        db.delete(row)
+        db.commit()
+        return {"ok": True}
+    finally:
+        db.close()
+
+
 # ---------------------------------------------------------------------
 # Storico Natale/Capodanno (v25.4) — per la rotazione delle feste
 # ---------------------------------------------------------------------

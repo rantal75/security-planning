@@ -65,6 +65,9 @@ const I18N = {
     saved_title: "Planning salvati",
     lbl_saved_month: "Mese salvato",
     btn_view_saved: "Visualizza",
+    btn_delete_saved: "Elimina",
+    confirm_delete_saved: "Eliminare il planning salvato di {month}? Vengono tolte anche le variazioni (assenze, sostituzioni) e i giorni di recupero maturati in quel mese, e il mese successivo non lo vedrà più per la continuità. L'operazione non si può annullare.",
+    saved_deleted: "Planning di {month} eliminato.",
     saved_empty: "Nessun planning salvato per ora.",
     saved_select_none: "— Seleziona un mese —",
     boundary_warning_title: "Continuità con il mese precedente salvato",
@@ -198,6 +201,9 @@ const I18N = {
     saved_title: "Plannings enregistrés",
     lbl_saved_month: "Mois enregistré",
     btn_view_saved: "Afficher",
+    btn_delete_saved: "Supprimer",
+    confirm_delete_saved: "Supprimer le planning enregistré de {month} ? Les modifications (absences, remplacements) et les jours de récupération acquis ce mois-là sont aussi supprimés, et le mois suivant ne le verra plus pour la continuité. Cette action est irréversible.",
+    saved_deleted: "Planning de {month} supprimé.",
     saved_empty: "Aucun planning enregistré pour l'instant.",
     saved_select_none: "— Sélectionner un mois —",
     boundary_warning_title: "Continuité avec le mois précédent enregistré",
@@ -1060,6 +1066,7 @@ async function loadSavedList() {
   emptyEl.style.display = rows.length ? "none" : "";
   sel.style.display = rows.length ? "" : "none";
   document.getElementById("btn-view-saved").disabled = rows.length === 0;
+  document.getElementById("btn-delete-saved").disabled = rows.length === 0;
   return rows;
 }
 
@@ -1150,6 +1157,30 @@ document.getElementById("btn-view-saved").addEventListener("click", async () => 
   } catch (e) {
     // nessun planning salvato per quel mese (non dovrebbe accadere, la
     // select è popolata solo con mesi effettivamente salvati)
+  }
+});
+
+// v25.14: elimina un planning salvato (solo ruolo completo; il server lo
+// rifiuta comunque agli utenti limitati).
+document.getElementById("btn-delete-saved").addEventListener("click", async () => {
+  if (LIMITED) return;
+  const sel = document.getElementById("saved-select");
+  const status = document.getElementById("saved-status");
+  if (!sel.value) return;
+  const [y, m] = sel.value.split("-").map(Number);
+  const label = monthLabel(y, m);
+  if (!await askConfirm(t("confirm_delete_saved").replace("{month}", label))) return;
+  try {
+    await api(`/planning/saved/${y}/${m}`, { method: "DELETE" });
+    if (VIEWING_SAVED && LAST_RESULT && LAST_RESULT.year === y && LAST_RESULT.month === m) exitSavedView();
+    await loadSavedList();
+    await loadRecoveryBalances();
+    await loadHolidayHistory();
+    status.textContent = t("saved_deleted").replace("{month}", label);
+    status.className = "status-msg";
+  } catch (e) {
+    status.textContent = e.message;
+    status.className = "status-msg error";
   }
 });
 
@@ -1655,6 +1686,7 @@ async function loadCurrentUser() {
   LIMITED = info.role === "limitato";
   if (LIMITED) {
     document.getElementById("btn-toggle-advanced").classList.add("hidden");
+    document.getElementById("btn-delete-saved").classList.add("hidden");  // v25.14
     setAdvancedOpen(false);
   }
   const who = document.getElementById("current-user");

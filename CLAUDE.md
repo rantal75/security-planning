@@ -170,6 +170,19 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   diagnosi (`relaxable_types`, messaggi `diag_giorno`/`diag_notte`).
   Unico intervento sul motore, minimo: da provare con un mese reale.
 
+- **v25.14** — Eliminare un planning salvato: `DELETE
+  /api/planning/saved/{year}/{month}` (`delete_saved_planning` in
+  `main.py`), 403 per gli utenti `limitato` (`_is_limited`), 404 se il mese
+  non è salvato. Toglie `SavedPlanning` + `PlanningVariation` +
+  `RecoveryEarned` del mese + le righe `holiday_history` AUTOMATICHE
+  (`auto_dic` per dicembre, `auto_gen` con `year - 1` per gennaio). NON
+  tocca `ManualConstraint`, righe `manuale` dello storico feste né il
+  motore. Frontend: `#btn-delete-saved` accanto a "Visualizza" (nascosto ai
+  limitati in `loadCurrentUser`), conferma con `askConfirm`, messaggio in
+  `#saved-status`; se si sta guardando quel mese esce dalla vista salvato.
+  Provato su una copia del db con login attivo (completo 200, limitato 403,
+  senza login 401). Irreversibile: il recupero è solo dai backup del server.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su
