@@ -162,6 +162,14 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   descrizione dai badge della Squadra. `loadCurrentUser()` va atteso prima
   di `loadEmployees()`. Aggiungere/eliminare dipendenti resta permesso.
 
+- **v25.13** — Vincoli manuali `giorno` (07-19) e `notte` (19-07): nuove
+  voci del menu Tipo in "Ferie & Vincoli" (`type_giorno`/`type_notte`,
+  IT/FR). Il backend le accettava già (`ASSIGNABLE_TYPES`) ma il motore le
+  ignorava; ora `engine.py` impone `x_day == 1` / `x_night == 1` (stesso
+  schema di `chef2`), le altre regole restano valide. Aggiunte alla
+  diagnosi (`relaxable_types`, messaggi `diag_giorno`/`diag_notte`).
+  Unico intervento sul motore, minimo: da provare con un mese reale.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su

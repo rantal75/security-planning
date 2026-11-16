@@ -283,7 +283,7 @@ class ShiftEngine:
         categoria generica. Il numero di prove è limitato (budget) per non
         far esplodere i tempi di attesa su mesi con molti vincoli."""
         findings: list[dict] = []
-        relaxable_types = ("chef2", "riposo", "recupero")
+        relaxable_types = ("chef2", "riposo", "recupero", "giorno", "notte")
         probes_budget = 20
         probes_used = 0
 
@@ -388,6 +388,13 @@ class ShiftEngine:
                 # mostrato in UI (bug segnalato dall'utente il 2026-09-25).
                 if self.manual_constraints.get((d, eid)) == "chef2":
                     model.Add(x_day[w, d] == 1)
+
+                # Turno imposto a mano (v25.13): "giorno" = 07-19, "notte" = 19-07.
+                # Le altre regole (riposi, blocchi, copertura) restano valide.
+                if self.manual_constraints.get((d, eid)) == "giorno":
+                    model.Add(x_day[w, d] == 1)
+                elif self.manual_constraints.get((d, eid)) == "notte":
+                    model.Add(x_night[w, d] == 1)
 
         # Giorni con sostituzione del capo, e chi (indice worker) sostituisce
         # — usato per escludere il sostituto dal conteggio minimo di
