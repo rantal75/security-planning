@@ -10,7 +10,7 @@ const I18N = {
     tab_staff: "Personale", tab_constraints: "Ferie & Vincoli", tab_planning: "Planning",
     staff_form_title: "Aggiungi / modifica dipendente",
     lbl_lastname: "Cognome", lbl_firstname: "Nome",
-    lbl_pref_night: "Pref. Notte", lbl_pref_day: "Pref. Giorno", lbl_pref_33: "Pref. 3-3",
+    lbl_pref_night: "Pref. Notte", lbl_pref_day: "Pref. Giorno", lbl_pref_33: "Pref. 3-3", lbl_pref_weekend: "Pref. 3 weekend",
     lbl_titular: "Titolare", lbl_adjoint: "Aggiunto", lbl_equipe: "Equipe", lbl_temp: "Temporaneo",
     lbl_weight: "Peso gerarchico personalizzato (opzionale)",
     btn_save: "Salva dipendente", btn_new: "Nuovo",
@@ -41,7 +41,7 @@ const I18N = {
     col_riposo: "Riposo", col_chef: "Capo", col_ferie: "Ferie", col_malattia: "Malattia",
     lbl_work_short: "g lav.", lbl_rest_short: "g riposo",
     lbl_wk: "WE", lbl_wk_worked: "lav.", lbl_wk_free: "liberi", lbl_nights: "notti",
-    wk_hint: "Weekend completi del mese. Lavorato = Giornata o Notte di sabato o domenica; libero = riposo sabato e domenica. Arancione = meno di 2 weekend liberi.",
+    wk_hint: "Weekend completi del mese. Lavorato = Giornata o Notte di sabato o domenica; libero = riposo sabato e domenica. Arancione = meno di 2 weekend liberi (meno di 3 per chi ha la preferenza 3 weekend).",
     none_sol: "Nessuna soluzione trovata: i vincoli attuali sono in conflitto tra loro per questo mese.",
     generated_ok: "Planning generato.",
     months: ["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"],
@@ -146,7 +146,7 @@ const I18N = {
     tab_staff: "Personnel", tab_constraints: "Congés & Contraintes", tab_planning: "Planning",
     staff_form_title: "Ajouter / modifier un agent",
     lbl_lastname: "Nom", lbl_firstname: "Prénom",
-    lbl_pref_night: "Préf. Nuit", lbl_pref_day: "Préf. Jour", lbl_pref_33: "Préf. 3-3",
+    lbl_pref_night: "Préf. Nuit", lbl_pref_day: "Préf. Jour", lbl_pref_33: "Préf. 3-3", lbl_pref_weekend: "Préf. 3 week-ends",
     lbl_titular: "Titulaire", lbl_adjoint: "Adjoint", lbl_equipe: "Équipe", lbl_temp: "Temporaire",
     lbl_weight: "Poids hiérarchique personnalisé (optionnel)",
     btn_save: "Enregistrer", btn_new: "Nouveau",
@@ -177,7 +177,7 @@ const I18N = {
     col_riposo: "Repos", col_chef: "Chef", col_ferie: "Congés", col_malattia: "Maladie",
     lbl_work_short: "j trav.", lbl_rest_short: "j repos",
     lbl_wk: "WE", lbl_wk_worked: "trav.", lbl_wk_free: "libres", lbl_nights: "nuits",
-    wk_hint: "Week-ends complets du mois. Travaillé = Jour ou Nuit le samedi ou le dimanche ; libre = repos samedi et dimanche. Orange = moins de 2 week-ends libres.",
+    wk_hint: "Week-ends complets du mois. Travaillé = Jour ou Nuit le samedi ou le dimanche ; libre = repos samedi et dimanche. Orange = moins de 2 week-ends libres (moins de 3 pour qui a la préférence 3 week-ends).",
     none_sol: "Aucune solution trouvée : les contraintes actuelles sont en conflit pour ce mois.",
     generated_ok: "Planning généré.",
     months: ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"],
@@ -426,6 +426,7 @@ function renderEmployeeList() {
     if (e.pref_night) { icons.push(icon("moon")); roleLabels.push(t("lbl_pref_night")); }
     else if (e.pref_day) { icons.push(icon("sun")); roleLabels.push(t("lbl_pref_day")); }
     if (e.pref_33) { icons.push(icon("repeat")); roleLabels.push(t("lbl_pref_33")); }
+    if (e.pref_weekend) { icons.push(icon("calendar")); roleLabels.push(t("lbl_pref_weekend")); }
     // v25.12: utenti "limitati" vedono solo il nome (niente icone né descrizione)
     if (LIMITED) { icons.length = 0; roleLabels.length = 0; }
     const badge = document.createElement("div");
@@ -471,6 +472,7 @@ function fillEmployeeForm(e) {
   document.getElementById("emp-pref-night").checked = e.pref_night;
   document.getElementById("emp-pref-day").checked = e.pref_day;
   document.getElementById("emp-pref-33").checked = e.pref_33;
+  document.getElementById("emp-pref-weekend").checked = !!e.pref_weekend;
   document.getElementById("emp-titular").checked = e.is_titular;
   document.getElementById("emp-adjoint").checked = e.is_adjoint;
   document.getElementById("emp-equipe").checked = e.is_equipe;
@@ -478,7 +480,7 @@ function fillEmployeeForm(e) {
   document.getElementById("emp-weight").value = e.custom_weight ?? "";
   // Apri automaticamente le opzioni avanzate se il dipendente ne ha già
   // impostata almeno una, così modificandolo non "sparisce" nulla.
-  const hasAdvanced = e.pref_night || e.pref_day || e.pref_33 || e.is_titular
+  const hasAdvanced = e.pref_night || e.pref_day || e.pref_33 || e.pref_weekend || e.is_titular
     || e.is_adjoint || e.is_equipe || e.is_temp || e.custom_weight != null;
   setAdvancedOpen(hasAdvanced);
 }
@@ -497,6 +499,7 @@ document.getElementById("employee-form").addEventListener("submit", async (ev) =
     pref_night: document.getElementById("emp-pref-night").checked,
     pref_day: document.getElementById("emp-pref-day").checked,
     pref_33: document.getElementById("emp-pref-33").checked,
+    pref_weekend: document.getElementById("emp-pref-weekend").checked,
     is_titular: document.getElementById("emp-titular").checked,
     is_adjoint: document.getElementById("emp-adjoint").checked,
     is_equipe: document.getElementById("emp-equipe").checked,
@@ -1008,7 +1011,8 @@ function renderCounts() {
     // nessun turno non contano, e chi ha assenze nel mese ("jolly" nel
     // motore) non riceve l'avviso: per lui il motore non cerca i 2 weekend.
     const wk = weekends[e.id] || { worked: 0, free: 0, absent: false };
-    const wkWarn = !wk.absent && weekends.total >= 2 && wk.free < 2;
+    const wkGoal = e.pref_weekend ? 3 : 2;  // v25.15
+    const wkWarn = !wk.absent && weekends.total >= wkGoal && wk.free < wkGoal;
     const wkFigures = `<span class="wk${wkWarn ? " wk-warn" : ""}" title="${t("wk_hint")}">${t("lbl_wk")} ${wk.worked} ${t("lbl_wk_worked")} / ${wk.free} ${t("lbl_wk_free")}</span>`;
     row.innerHTML = `<span class="label">${icon(ok ? "check-circle" : "warning")}${e.last_name.toUpperCase()}</span><span class="figures">${c.work}/${target}${otBadge}${t("lbl_work_short")} (${c.night} ${t("lbl_nights")}) — ${c.rest}/${restDue}${t("lbl_rest_short")}${wkFigures}</span>`;
     el.appendChild(row);

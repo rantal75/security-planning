@@ -183,6 +183,20 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   Provato su una copia del db con login attivo (completo 200, limitato 403,
   senza login 401). Irreversibile: il recupero è solo dai backup del server.
 
+- **v25.15** — Preferenza `pref_weekend` ("Pref. 3 weekend"): colonna
+  nuova su `employees` (creata da sola da `_migrate_add_missing_columns`
+  all'avvio), in `models`/`schemas`, nascosta ai limitati
+  (`HIDDEN_FOR_LIMITED`). Motore (`engine.py`, dopo `at_least_two`): bonus
+  +100 `at_least_three` per chi la ha, SOFT come quello a 2, quindi non può
+  rendere un mese impossibile. Frontend: casella `#emp-pref-weekend`, icona
+  `calendar` nello sprite, avviso `wkGoal` (3 invece di 2) in
+  `renderCounts`. Provato su dati reali: 3 weekend solo nei mesi dove le
+  regole lo permettono (ott 2026, lug 2027); un obbligo rigido a 3 è
+  IMPOSSIBILE in gran parte dei mesi (ritmo 2-2 + quote). Il risultato
+  varia un po' tra una generazione e l'altra (limite di tempo del
+  solutore). Nota: febbraio 2027 dà "Nessuna soluzione" anche col motore
+  v25.14 e senza vincoli: problema preesistente, da indagare.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su

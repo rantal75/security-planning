@@ -57,6 +57,7 @@ class Employee(Base):
     pref_night = Column(Boolean, default=False)
     pref_day = Column(Boolean, default=False)
     pref_33 = Column(Boolean, default=False)
+    pref_weekend = Column(Boolean, default=False)  # v25.15: punta a 3 weekend liberi invece di 2
 
     is_titular = Column(Boolean, default=False)
     is_adjoint = Column(Boolean, default=False)
@@ -73,6 +74,7 @@ class Employee(Base):
             "pref_night": self.pref_night,
             "pref_day": self.pref_day,
             "pref_33": self.pref_33,
+            "pref_weekend": bool(self.pref_weekend),
             "is_titular": self.is_titular,
             "is_adjoint": self.is_adjoint,
             "is_equipe": self.is_equipe,

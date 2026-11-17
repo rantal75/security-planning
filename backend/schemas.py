@@ -18,6 +18,7 @@ class EmployeeIn(BaseModel):
     pref_night: bool = False
     pref_day: bool = False
     pref_33: bool = False
+    pref_weekend: bool = False
     is_titular: bool = False
     is_adjoint: bool = False
     is_equipe: bool = False

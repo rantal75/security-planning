@@ -565,6 +565,14 @@ class ShiftEngine:
                 model.Add(sum(free_weekends) >= 2).OnlyEnforceIf(at_least_two)
                 objective_terms.append(at_least_two * 100)
 
+                # v25.15: chi ha la preferenza weekend punta a 3 weekend
+                # liberi. Stesso schema del bonus a 2 e sempre soft: in un
+                # mese stretto non rende mai il modello impossibile.
+                if emp.get("pref_weekend"):
+                    at_least_three = model.NewBoolVar(f"three_weekends_{w}")
+                    model.Add(sum(free_weekends) >= 3).OnlyEnforceIf(at_least_three)
+                    objective_terms.append(at_least_three * 100)
+
         # --- Festività di fine anno (v25.4, vedi nota in testa al file) ---
         if self.holiday_rule and self.month == 12 and nd >= CAPODANNO_DAY:
             for w in range(W):

@@ -110,7 +110,7 @@ def me(request: Request):
 # cambiano preferenze/ruoli dei dipendenti. is_titular resta nei dati in
 # sola lettura: il frontend lo usa per escludere il titolare da alcune liste
 # (sostituti, vincoli), ma per loro non viene mostrato.
-HIDDEN_FOR_LIMITED = ("pref_night", "pref_day", "pref_33",
+HIDDEN_FOR_LIMITED = ("pref_night", "pref_day", "pref_33", "pref_weekend",
                       "is_adjoint", "is_equipe", "is_temp", "custom_weight")
 LOCKED_FOR_LIMITED = HIDDEN_FOR_LIMITED + ("is_titular",)
 
