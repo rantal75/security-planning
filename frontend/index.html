@@ -6,7 +6,7 @@
 <title>Gestione Sicurezza — Planning Turni</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=25.17">
+<link rel="stylesheet" href="style.css?v=25.18">
 </head>
 <body>
 
@@ -112,6 +112,12 @@
       <rect x="4" y="5.5" width="16" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/>
       <path d="M4 10h16M8.5 3.5v4M15.5 3.5v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
     </symbol>
+    <symbol id="icon-arrow-up" viewBox="0 0 24 24">
+      <path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
+    <symbol id="icon-arrow-down" viewBox="0 0 24 24">
+      <path d="M12 5v14M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </symbol>
     <symbol id="icon-star" viewBox="0 0 24 24">
       <path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.8l-5.2 2.8 1-5.8-4.3-4.1 5.9-.8L12 3.5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
     </symbol>
@@ -127,7 +133,7 @@
         <span class="brand-title" data-i18n="app_title">Gestione Sicurezza</span>
         <span class="brand-sub" data-i18n="app_sub">Planning turni H24</span>
       </div>
-      <span class="version-tag" title="Versione applicazione">v25.17</span>
+      <span class="version-tag" title="Versione applicazione">v25.18</span>
     </div>
     <div class="topbar-right">
       <span id="current-user" class="current-user hidden"></span>
@@ -198,6 +204,11 @@
         <div class="card">
           <h2 data-i18n="staff_list_title">Squadra</h2>
           <div id="employee-list" class="employee-list"></div>
+          <button type="button" id="btn-order-toggle" class="btn ghost small" data-i18n="btn_order_open">Cambia ordine</button>
+          <div id="order-panel" class="order-panel hidden">
+            <p class="status-msg" data-i18n="order_hint">Usa le frecce per spostare i dipendenti. L'ordine vale in tutti i menu, nel planning e nell'Excel.</p>
+            <div id="order-list" class="order-list"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -421,6 +432,6 @@
   </div>
 </div>
 
-<script src="app.js?v=25.17"></script>
+<script src="app.js?v=25.18"></script>
 </body>
 </html>

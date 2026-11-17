@@ -47,6 +47,12 @@ def build_excel(year: int, month: int, days_out: dict, employees: list[dict], la
     suo nome viene evidenziato in blu nella cella Giornata/Notte di quei
     giorni specifici."""
     employees_by_id = {e["id"]: e for e in employees}
+    # v25.18: i nomi nelle celle seguono l'ordine scelto dall'utente
+    # (`employees` arriva già in quell'ordine); esterni Boss in fondo.
+    order = {e["id"]: i for i, e in enumerate(employees)}
+
+    def pos(eid: str) -> int:
+        return order.get(eid, len(order))
     num_days = monthrange(year, month)[1]
     cols = COLS.get(lang, COLS["IT"])
     abbr = DAYS_ABBR.get(lang, DAYS_ABBR["IT"])
@@ -81,7 +87,7 @@ def build_excel(year: int, month: int, days_out: dict, employees: list[dict], la
         if not ids:
             worksheet.write(row, col, "", cell_fmt)
             return
-        pairs = sorted(((short_name(employees_by_id, eid), eid) for eid in ids), key=lambda p: p[0])
+        pairs = [(short_name(employees_by_id, eid), eid) for eid in sorted(ids, key=pos)]
         if len(pairs) == 1:
             # xlsxwriter.write_rich_string() richiede ALMENO 2 coppie
             # formato/stringa (a parte l'eventuale formato finale della
@@ -120,10 +126,10 @@ def build_excel(year: int, month: int, days_out: dict, employees: list[dict], la
         worksheet.write(row, 1, d, cell_fmt)
         write_names_cell(row, 2, res_d["giorno"], overtime_today)
         write_names_cell(row, 3, res_d["notte"], overtime_today)
-        worksheet.write(row, 4, ",".join(sorted(short_name(employees_by_id, e) for e in res_d["riposo"])), cell_fmt)
+        worksheet.write(row, 4, ",".join(short_name(employees_by_id, e) for e in sorted(res_d["riposo"], key=pos)), cell_fmt)
         worksheet.write(row, 5, chef_name, cell_fmt)
-        worksheet.write(row, 6, ",".join(sorted(short_name(employees_by_id, e) for e in res_d["ferie"])), cell_fmt)
-        worksheet.write(row, 7, ",".join(sorted(short_name(employees_by_id, e) for e in res_d["malattia"])), cell_fmt)
+        worksheet.write(row, 6, ",".join(short_name(employees_by_id, e) for e in sorted(res_d["ferie"], key=pos)), cell_fmt)
+        worksheet.write(row, 7, ",".join(short_name(employees_by_id, e) for e in sorted(res_d["malattia"], key=pos)), cell_fmt)
 
     worksheet.set_landscape()
     worksheet.set_paper(9)  # A4

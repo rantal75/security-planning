@@ -252,6 +252,29 @@ input:focus, select:focus, button:focus-visible {
 .emp-badge .del { display: flex; color: var(--alert); padding-left: 4px; cursor: pointer; }
 .emp-badge .del .icon { width: 12px; height: 12px; }
 
+/* ---------- Ordine dei dipendenti (v25.18) ---------- */
+.order-panel.hidden { display: none; }
+.order-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.order-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+  font-size: 13px;
+}
+.order-row .pos { width: 22px; color: var(--text-faint); font-family: var(--font-data); text-align: right; }
+.order-row .name { flex: 1; }
+.order-row .btn-mini {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 28px; padding: 0;
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: var(--radius); cursor: pointer;
+}
+.order-row .btn-mini:hover:not(:disabled) { border-color: var(--text-faint); color: var(--text); }
+.order-row .btn-mini:disabled { opacity: 0.3; cursor: default; }
+.order-row .btn-mini .icon { width: 14px; height: 14px; }
+
 /* ---------- Constraint list ---------- */
 .constraint-list { display: flex; flex-direction: column; gap: 6px; margin: 14px 0; max-height: 220px; overflow-y: auto; }
 .constraint-row {

@@ -221,6 +221,20 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   `constraint_added` elenca persona, tipo, giorni e conteggio. I dati nel
   database erano già corretti: nessuna migrazione.
 
+- **v25.18** — Ordine dei dipendenti scelto dall'utente. Colonna
+  `employees.sort_order` (NULL = mai ordinato; creata da
+  `_migrate_add_missing_columns`). `_employees_in_order()` in `main.py` è
+  l'unica fonte dell'ordine: la usano `GET /api/employees` e
+  `_load_employees` (quindi anche export Excel, riepiloghi e bilanci).
+  `PUT /api/employees/order` `{ids}` salva l'ordine (id sconosciuto → 400, id
+  non indicati in coda); un dipendente nuovo va in fondo (si fissa prima
+  l'ordine attuale). Frontend: pannello `#order-panel` (frecce, `moveEmployee`),
+  `orderIndex(id)` usato nelle celle del planning (prima `.sort()`
+  alfabetico) e nello storico feste; Excel ordina con `pos()`. Il motore non
+  è stato toccato: ordina già da sé per peso, a parità l'ordine di ingresso
+  può cambiare, quindi a parità di dati un planning rigenerato può uscire
+  diverso ma ugualmente valido.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su

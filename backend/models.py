@@ -65,6 +65,9 @@ class Employee(Base):
     is_temp = Column(Boolean, default=False)
 
     custom_weight = Column(Integer, nullable=True)
+    # v25.18: posizione scelta dall'utente nell'elenco (0 = primo). NULL = mai
+    # ordinato: resta nell'ordine di inserimento, dopo chi è già ordinato.
+    sort_order = Column(Integer, nullable=True)
 
     def to_dict(self):
         return {
@@ -80,6 +83,7 @@ class Employee(Base):
             "is_equipe": self.is_equipe,
             "is_temp": self.is_temp,
             "custom_weight": self.custom_weight,
+            "sort_order": self.sort_order,
         }
 
 

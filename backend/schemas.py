@@ -30,6 +30,10 @@ class EmployeeOut(EmployeeIn):
     id: str
 
 
+class EmployeeOrderIn(BaseModel):
+    ids: list[str]  # id dei dipendenti nell'ordine voluto
+
+
 class ConstraintIn(BaseModel):
     year: int
     month: int = Field(ge=1, le=12)

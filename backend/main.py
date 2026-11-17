@@ -167,11 +167,19 @@ def _with_short_codes(rows: list[dict]) -> list[dict]:
     return rows
 
 
+def _employees_in_order(db: Session) -> list:
+    """Dipendenti nell'ordine scelto dall'utente (v25.18). Chi non ha mai
+    avuto un ordine resta nell'ordine di inserimento, dopo gli altri."""
+    rows = db.query(models.Employee).all()
+    rows.sort(key=lambda e: (e.sort_order is None, e.sort_order or 0))
+    return rows
+
+
 @app.get("/api/employees")
 def list_employees(request: Request):
     db = db_session()
     try:
-        rows = [e.to_dict() for e in db.query(models.Employee).all()]
+        rows = [e.to_dict() for e in _employees_in_order(db)]
         rows = _with_short_codes(rows)
         if _is_limited(request):
             rows = [_hide_prefs(r) for r in rows]
@@ -197,11 +205,37 @@ def create_employee(payload: schemas.EmployeeIn, request: Request):
             for field, value in data.items():
                 setattr(existing, field, value)
         else:
-            existing = models.Employee(id=eid, **data)
+            # v25.18: il nuovo dipendente va in fondo all'elenco; prima si
+            # fissa l'ordine attuale, così nessuno gli passa davanti.
+            current = _employees_in_order(db)
+            for pos, e in enumerate(current):
+                e.sort_order = pos
+            existing = models.Employee(id=eid, sort_order=len(current), **data)
             db.add(existing)
         db.commit()
         out = existing.to_dict()
         return _hide_prefs(out) if limited else out
+    finally:
+        db.close()
+
+
+@app.put("/api/employees/order")
+def set_employee_order(payload: schemas.EmployeeOrderIn):
+    """v25.18: salva l'ordine dei dipendenti. Gli id non indicati restano
+    in fondo nell'ordine attuale; un id sconosciuto è un errore."""
+    db = db_session()
+    try:
+        current = _employees_in_order(db)
+        by_id = {e.id: e for e in current}
+        unknown = [i for i in payload.ids if i not in by_id]
+        if unknown:
+            raise HTTPException(400, f"Dipendente non trovato: {unknown[0]}")
+        ordered = list(dict.fromkeys(payload.ids))
+        ordered += [e.id for e in current if e.id not in ordered]
+        for pos, eid in enumerate(ordered):
+            by_id[eid].sort_order = pos
+        db.commit()
+        return {"ok": True}
     finally:
         db.close()
 
@@ -369,7 +403,7 @@ def delete_all_constraints(year: int, month: int):
 # ---------------------------------------------------------------------
 
 def _load_employees(db: Session) -> list[dict]:
-    return _with_short_codes([e.to_dict() for e in db.query(models.Employee).all()])
+    return _with_short_codes([e.to_dict() for e in _employees_in_order(db)])
 
 
 def _load_constraints_map(db: Session, year: int, month: int) -> dict:

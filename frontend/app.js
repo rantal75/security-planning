@@ -66,6 +66,9 @@ const I18N = {
     lbl_saved_month: "Mese salvato",
     btn_view_saved: "Visualizza",
     btn_delete_saved: "Elimina",
+    btn_order_open: "Cambia ordine", btn_order_close: "Chiudi ordine",
+    order_hint: "Usa le frecce per spostare i dipendenti. L'ordine vale in tutti i menu, nel planning e nell'Excel.",
+    order_up: "Sposta su", order_down: "Sposta giù",
     confirm_delete_saved: "Eliminare il planning salvato di {month}? Vengono tolte anche le variazioni (assenze, sostituzioni) e i giorni di recupero maturati in quel mese, e il mese successivo non lo vedrà più per la continuità. L'operazione non si può annullare.",
     saved_deleted: "Planning di {month} eliminato.",
     relaxed_note: "Nota: per questo mese le regole normali non avevano soluzione, quindi ad alcune persone è stato ammesso un secondo blocco da 3 giorni di lavoro.",
@@ -204,6 +207,9 @@ const I18N = {
     lbl_saved_month: "Mois enregistré",
     btn_view_saved: "Afficher",
     btn_delete_saved: "Supprimer",
+    btn_order_open: "Changer l'ordre", btn_order_close: "Fermer l'ordre",
+    order_hint: "Utilisez les flèches pour déplacer les employés. L'ordre vaut dans tous les menus, dans le planning et dans l'Excel.",
+    order_up: "Monter", order_down: "Descendre",
     confirm_delete_saved: "Supprimer le planning enregistré de {month} ? Les modifications (absences, remplacements) et les jours de récupération acquis ce mois-là sont aussi supprimés, et le mois suivant ne le verra plus pour la continuité. Cette action est irréversible.",
     saved_deleted: "Planning de {month} supprimé.",
     relaxed_note: "Note : pour ce mois les règles normales n'avaient pas de solution ; certaines personnes ont donc un second bloc de 3 jours de travail.",
@@ -358,6 +364,7 @@ document.querySelectorAll(".lang-btn").forEach(btn => {
     try { localStorage.setItem("planning_lang", LANG); } catch (e) {}  // la usa anche la pagina di accesso
     applyI18n();
     renderEmployeeList();
+    if (orderPanelOpen) renderOrderList();
     renderEmployeeSelects();
     populateMonthYear();
     if (LAST_RESULT) { renderPlanningTable(); renderCounts(); }
@@ -526,6 +533,61 @@ function renderEmployeeSelects() {
     if (current) sel.value = current;
   });
 }
+
+// v25.18: ordine scelto dall'utente. EMPLOYEES arriva già in quell'ordine dal
+// server; gli id sconosciuti (es. esterni Boss) vanno in fondo.
+function orderIndex(id) {
+  const i = EMPLOYEES.findIndex(e => e.id === id);
+  return i === -1 ? EMPLOYEES.length : i;
+}
+
+let orderPanelOpen = false;
+
+function renderOrderList(focus) {
+  const el = document.getElementById("order-list");
+  el.innerHTML = EMPLOYEES.map((e, i) => `
+    <div class="order-row" data-id="${e.id}">
+      <span class="pos">${i + 1}</span>
+      <span class="name">${e.last_name.toUpperCase()} ${e.first_name}</span>
+      <button type="button" class="btn-mini" data-dir="-1" title="${t("order_up")}" aria-label="${t("order_up")}" ${i === 0 ? "disabled" : ""}>${icon("arrow-up")}</button>
+      <button type="button" class="btn-mini" data-dir="1" title="${t("order_down")}" aria-label="${t("order_down")}" ${i === EMPLOYEES.length - 1 ? "disabled" : ""}>${icon("arrow-down")}</button>
+    </div>`).join("");
+  el.querySelectorAll(".btn-mini").forEach(btn => {
+    btn.addEventListener("click", () => moveEmployee(btn.closest(".order-row").dataset.id, parseInt(btn.dataset.dir)));
+  });
+  if (focus) {
+    const b = el.querySelector(`.order-row[data-id="${CSS.escape(focus.id)}"] .btn-mini[data-dir="${focus.dir}"]`)
+      || el.querySelector(`.order-row[data-id="${CSS.escape(focus.id)}"] .btn-mini:not(:disabled)`);
+    if (b) b.focus();
+  }
+}
+
+let orderSaving = false;
+async function moveEmployee(id, dir) {
+  if (orderSaving) return;
+  const i = EMPLOYEES.findIndex(e => e.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= EMPLOYEES.length) return;
+  orderSaving = true;
+  try {
+    const ids = EMPLOYEES.map(e => e.id);
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    await api("/employees/order", { method: "PUT", body: JSON.stringify({ ids }) });
+    await loadEmployees();            // ridisegna elenco, menu e tabelle nel nuovo ordine
+    renderOrderList({ id, dir });
+    if (LAST_RESULT) { renderPlanningTable(); renderCounts(); }
+  } finally {
+    orderSaving = false;
+  }
+}
+
+document.getElementById("btn-order-toggle").addEventListener("click", () => {
+  orderPanelOpen = !orderPanelOpen;
+  document.getElementById("order-panel").classList.toggle("hidden", !orderPanelOpen);
+  const btn = document.getElementById("btn-order-toggle");
+  btn.dataset.i18n = orderPanelOpen ? "btn_order_close" : "btn_order_open";
+  btn.textContent = t(btn.dataset.i18n);
+  if (orderPanelOpen) renderOrderList();
+});
 
 // ---------------------------------------------------------------
 // Vincoli manuali (ferie/malattia/riposo/chef2)
@@ -709,7 +771,7 @@ async function loadHolidayHistory() {
     ["natale", "capodanno"].forEach(holiday => {
       const entries = rows
         .filter(r => r.year === year && r.holiday === holiday)
-        .sort((a, b) => employeeName(a.employee_id).localeCompare(employeeName(b.employee_id)));
+        .sort((a, b) => orderIndex(a.employee_id) - orderIndex(b.employee_id));
       if (entries.length === 0) return;
       const line = document.createElement("div");
       line.className = "holiday-line";
@@ -961,7 +1023,7 @@ function renderPlanningTable() {
     const otToday = overtimeIdsForDay(d);
 
     const fmt = (ids) => (ids || [])
-      .slice().sort()
+      .slice().sort((a, b) => orderIndex(a) - orderIndex(b))
       .map(id => {
         let s = shortName(id);
         if (highlight && s === shortName(highlight)) s = `<mark class="hl">${s}</mark>`;
