@@ -59,6 +59,15 @@ class GenerateIn(BaseModel):
     overtime_max_extra: int = 0
 
 
+class ExportIn(BaseModel):
+    """Planning già mostrato a schermo, da trasformare in Excel (v25.19)."""
+    year: int
+    month: int = Field(ge=1, le=12)
+    days: dict  # {"1": {"giorno": [...], "notte": [...], "riposo": [...], ...}}
+    overtime_days: dict = Field(default_factory=dict)
+    lang: str = "IT"
+
+
 class HolidayHistoryIn(BaseModel):
     year: int = Field(ge=2000, le=2100)  # anno del dicembre
     employee_id: str

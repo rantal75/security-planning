@@ -872,6 +872,39 @@ def delete_all_overrides(year: int, month: int):
         db.close()
 
 
+@app.post("/api/planning/export")
+def export_excel_from_screen(payload: schemas.ExportIn):
+    """v25.19: l'Excel viene costruito dal planning che l'utente ha sullo
+    schermo, senza rilanciare il motore. Prima l'export ricalcolava tutto
+    (20-45 secondi sul server) e, essendo il solutore non deterministico,
+    poteva uscire diverso da quanto visto a video."""
+    num_days = monthrange(payload.year, payload.month)[1]
+    try:
+        days_int = {int(k): v for k, v in payload.days.items()}
+    except ValueError:
+        raise HTTPException(400, "Giorni non validi")
+    if set(days_int) != set(range(1, num_days + 1)):
+        raise HTTPException(400, "Il planning deve contenere tutti i giorni del mese")
+    for v in days_int.values():
+        if not isinstance(v, dict):
+            raise HTTPException(400, "Giorni non validi")
+        for k in ("giorno", "notte", "riposo", "ferie", "malattia"):
+            v[k] = [str(x) for x in (v.get(k) or [])]
+        v["chef"] = v.get("chef") or None
+    db = db_session()
+    try:
+        xlsx_bytes = build_excel(payload.year, payload.month, days_int, _load_employees(db),
+                                 lang=payload.lang, overtime_days=payload.overtime_days or {})
+        filename = f"Planning_{payload.year}_{payload.month:02d}.xlsx"
+        return Response(
+            content=xlsx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+    finally:
+        db.close()
+
+
 @app.get("/api/planning/export")
 def export_excel(
     year: int, month: int, chef_present: bool = True, lang: str = "IT",

@@ -71,6 +71,8 @@ const I18N = {
     order_up: "Sposta su", order_down: "Sposta giù",
     confirm_delete_saved: "Eliminare il planning salvato di {month}? Vengono tolte anche le variazioni (assenze, sostituzioni) e i giorni di recupero maturati in quel mese, e il mese successivo non lo vedrà più per la continuità. L'operazione non si può annullare.",
     saved_deleted: "Planning di {month} eliminato.",
+    export_need_plan: "Genera prima il planning: l'Excel contiene quello che vedi a schermo.",
+    export_preparing: "Preparo il file Excel…",
     relaxed_note: "Nota: per questo mese le regole normali non avevano soluzione, quindi ad alcune persone è stato ammesso un secondo blocco da 3 giorni di lavoro.",
     saved_empty: "Nessun planning salvato per ora.",
     saved_select_none: "— Seleziona un mese —",
@@ -212,6 +214,8 @@ const I18N = {
     order_up: "Monter", order_down: "Descendre",
     confirm_delete_saved: "Supprimer le planning enregistré de {month} ? Les modifications (absences, remplacements) et les jours de récupération acquis ce mois-là sont aussi supprimés, et le mois suivant ne le verra plus pour la continuité. Cette action est irréversible.",
     saved_deleted: "Planning de {month} supprimé.",
+    export_need_plan: "Générez d'abord le planning : l'Excel contient ce que vous voyez à l'écran.",
+    export_preparing: "Préparation du fichier Excel…",
     relaxed_note: "Note : pour ce mois les règles normales n'avaient pas de solution ; certaines personnes ont donc un second bloc de 3 jours de travail.",
     saved_empty: "Aucun planning enregistré pour l'instant.",
     saved_select_none: "— Sélectionner un mois —",
@@ -1730,12 +1734,50 @@ document.getElementById("btn-export").addEventListener("click", () => {
     window.location.href = `${API}/planning/saved/${LAST_RESULT.year}/${LAST_RESULT.month}/export?lang=${LANG}`;
     return;
   }
-  const { year, month } = currentPeriod();
-  const chef_present = document.getElementById("p-chef-present").checked;
-  const otIds = OVERTIME_SELECTION.ids.join(",");
-  window.location.href = `${API}/planning/export?year=${year}&month=${month}&chef_present=${chef_present}&lang=${LANG}`
-    + `&overtime_employee_ids=${encodeURIComponent(otIds)}&overtime_max_extra=${OVERTIME_SELECTION.maxExtra}`;
+  exportFromScreen();
 });
+
+// v25.19: l'Excel nasce dal planning mostrato a schermo (istantaneo e
+// identico a ciò che vedi). Prima il server ricalcolava tutto: 20-45
+// secondi senza nessun segnale e un file che poteva essere diverso.
+async function exportFromScreen() {
+  const statusEl = document.getElementById("planning-status");
+  const btn = document.getElementById("btn-export");
+  if (!LAST_RESULT) {
+    statusEl.textContent = t("export_need_plan");
+    statusEl.className = "status-msg error";
+    return;
+  }
+  const { year, month } = LAST_RESULT;
+  const prev = { text: statusEl.textContent, cls: statusEl.className };
+  btn.disabled = true;
+  statusEl.textContent = t("export_preparing");
+  statusEl.className = "status-msg";
+  try {
+    const res = await fetch(API + "/planning/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ year, month, days: LAST_RESULT.days, overtime_days: LAST_RESULT.overtime_days || {}, lang: LANG }),
+    });
+    if (res.status === 401) { window.location.href = "/login"; return; }
+    if (!res.ok) throw new Error(`Errore ${res.status}`);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `Planning_${year}_${String(month).padStart(2, "0")}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+    statusEl.textContent = prev.text;
+    statusEl.className = prev.cls;
+  } catch (e) {
+    statusEl.textContent = t("err_generic").replace("{msg}", e.message);
+    statusEl.className = "status-msg error";
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // Calcola font-size e padding delle celle per la stampa. Il comportamento
 // dipende dall'orientamento scelto:

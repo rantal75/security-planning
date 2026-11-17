@@ -235,6 +235,20 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   può cambiare, quindi a parità di dati un planning rigenerato può uscire
   diverso ma ugualmente valido.
 
+- **v25.19** — "Esporta Excel" non si blocca più. Causa: `GET
+  /api/planning/export` chiamava `_generate_full` (rilancia il solutore:
+  19-43 s sul server ARM, 8 thread al 100%, nessun segnale a video; e due
+  generazioni dello stesso mese NON sono identiche, quindi il file poteva
+  differire dallo schermo). Ora `POST /api/planning/export`
+  (`export_excel_from_screen`, schema `ExportIn`) riceve `days` e
+  `overtime_days` di `LAST_RESULT` e chiama solo `build_excel` (0,03 s);
+  il frontend lo usa con `exportFromScreen()` (fetch + Blob, pulsante
+  disabilitato mentre lavora). Il vecchio GET resta ma non è più usato;
+  l'export di un planning SALVATO era già istantaneo. ATTENZIONE, stesso
+  difetto ancora presente: `POST /api/planning/save` rigenera il mese con
+  `_generate_full`, quindi ciò che viene salvato può differire da ciò che
+  l'utente ha visto.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su
