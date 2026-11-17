@@ -210,6 +210,17 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   impossibili funziona come prima. Con assenze, riposi forzati o turni
   imposti febbraio era impossibile comunque: il ripiego copre anche questi.
 
+- **v25.17** — Form vincoli ("Ferie & Vincoli"), solo frontend. Bug 1:
+  `#c-day-to` seguiva `#c-day-from` solo se restava indietro, quindi dopo
+  aver inserito il 20 scegliere il 5 salvava 5–20 (16 giorni). Ora
+  `syncDayTo()`: "Al giorno" segue sempre, tranne se l'utente l'ha toccato
+  (`dayToTouched`); dopo ogni aggiunta riparte da "Dal giorno". Bug 2:
+  `loadConstraints()` mostrava "primo–ultimo giorno" per persona+tipo
+  (9-10 e 16-17 → "(9–17)"): ora una riga per ogni gruppo di giorni
+  consecutivi (`daysLabel`), e la X cancella solo quel gruppo. Il messaggio
+  `constraint_added` elenca persona, tipo, giorni e conteggio. I dati nel
+  database erano già corretti: nessuna migrazione.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su

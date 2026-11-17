@@ -103,7 +103,8 @@ const I18N = {
     holiday_empty: "Nessuno storico per ora: inserisci chi ha lavorato le feste negli anni passati.",
     holiday_manual: "inserito a mano",
     constraint_period: "Mese: {month} {year} — si cambia dalla tab Planning.",
-    constraint_added: "Aggiunto. Premi \"Genera planning\" per applicarlo.",
+    constraint_added: "Aggiunto: {what}. Premi \"Genera planning\" per applicarlo.",
+    days_short: "gg",
     err_day_order: "\"Al giorno\" deve essere uguale o successivo a \"Dal giorno\".",
     err_generic: "Operazione non riuscita: {msg}",
     btn_cancel: "Annulla", btn_ok: "Conferma",
@@ -240,7 +241,8 @@ const I18N = {
     holiday_empty: "Aucun historique pour l'instant : saisissez qui a travaillé les fêtes les années passées.",
     holiday_manual: "saisi à la main",
     constraint_period: "Mois : {month} {year} — se change depuis l'onglet Planning.",
-    constraint_added: "Ajouté. Cliquez sur \"Générer le planning\" pour l'appliquer.",
+    constraint_added: "Ajouté : {what}. Cliquez sur \"Générer le planning\" pour l'appliquer.",
+    days_short: "j",
     err_day_order: "\"Au jour\" doit être égal ou postérieur à \"Du jour\".",
     err_generic: "Opération échouée : {msg}",
     btn_cancel: "Annuler", btn_ok: "Confirmer",
@@ -535,6 +537,11 @@ function currentPeriod() {
   };
 }
 
+// "12" per un giorno, "10–14" per più giorni consecutivi.
+function daysLabel(days) {
+  return days.length === 1 ? `${days[0]}` : `${days[0]}–${days[days.length - 1]}`;
+}
+
 async function loadConstraints() {
   const { year, month } = currentPeriod();
   // Il form non ha un suo mese: usa quello scelto nella tab Planning. Lo
@@ -552,17 +559,28 @@ async function loadConstraints() {
     grouped[key].ids.push(r.id);
     grouped[key].days.push(r.day);
   });
+  // v25.17: una riga per ogni gruppo di giorni CONSECUTIVI. Prima la riga
+  // mostrava solo "primo–ultimo giorno": i giorni 9-10 e 16-17 comparivano
+  // come "(9–17)", cioè come 9 giorni di fila, anche se ne erano salvati 4.
   Object.values(grouped).forEach(g => {
-    g.days.sort((a, b) => a - b);
-    const row = document.createElement("div");
-    row.className = "constraint-row";
-    row.innerHTML = `<span>${employeeName(g.employee_id)} — ${t("type_" + g.type) || g.type} (${g.days[0]}–${g.days[g.days.length - 1]})</span><span class="del">${icon("x")}</span>`;
-    row.querySelector(".del").addEventListener("click", async () => {
-      for (const id of g.ids) await api(`/constraints/${id}`, { method: "DELETE" });
-      await loadConstraints();
-      if (g.type === "recupero") await loadRecoveryBalances();
+    const pairs = g.days.map((day, i) => ({ day, id: g.ids[i] })).sort((a, b) => a.day - b.day);
+    const runs = [];
+    pairs.forEach(p => {
+      const last = runs[runs.length - 1];
+      if (last && p.day === last.days[last.days.length - 1] + 1) { last.days.push(p.day); last.ids.push(p.id); }
+      else runs.push({ days: [p.day], ids: [p.id] });
     });
-    el.appendChild(row);
+    runs.forEach(run => {
+      const row = document.createElement("div");
+      row.className = "constraint-row";
+      row.innerHTML = `<span>${employeeName(g.employee_id)} — ${t("type_" + g.type) || g.type} (${daysLabel(run.days)})</span><span class="del">${icon("x")}</span>`;
+      row.querySelector(".del").addEventListener("click", async () => {
+        for (const id of run.ids) await api(`/constraints/${id}`, { method: "DELETE" });
+        await loadConstraints();
+        if (g.type === "recupero") await loadRecoveryBalances();
+      });
+      el.appendChild(row);
+    });
   });
 }
 
@@ -594,8 +612,16 @@ document.getElementById("constraint-form").addEventListener("submit", async (ev)
       : t("err_generic").replace("{msg}", e.message));
     return;
   }
-  statusEl.textContent = t("constraint_added");
+  // v25.17: il messaggio dice cosa è stato davvero aggiunto, così un
+  // intervallo troppo largo si nota subito.
+  const count = payload.day_to - payload.day_from + 1;
+  const range = payload.day_from === payload.day_to ? `${payload.day_from}` : `${payload.day_from}–${payload.day_to}`;
+  statusEl.textContent = t("constraint_added").replace("{what}",
+    `${employeeName(payload.employee_id)} — ${t("type_" + payload.type)}, ${range} (${count} ${t("days_short")})`);
   statusEl.className = "status-msg ok";
+  // il prossimo inserimento riparte da un solo giorno, non dall'intervallo di prima
+  document.getElementById("c-day-to").value = document.getElementById("c-day-from").value;
+  dayToTouched = false;
   await loadConstraints();
   if (payload.type === "recupero") await loadRecoveryBalances();
 });
@@ -603,11 +629,19 @@ document.getElementById("constraint-form").addEventListener("submit", async (ev)
 // "Al giorno" segue "Dal giorno" quando resterebbe indietro: il caso più
 // comune (un solo giorno, o un intervallo che parte più avanti) non
 // richiede più di correggere a mano anche il secondo campo.
-document.getElementById("c-day-from").addEventListener("change", () => {
+// v25.17: "Al giorno" seguiva "Dal giorno" solo quando restava INDIETRO. Se
+// prima avevi inserito il 20 e poi sceglievi il 5, "Al giorno" restava a 20
+// e venivano salvati 16 giorni (5–20) invece di uno. Ora segue sempre, a meno
+// che tu non l'abbia cambiato a mano per fare un intervallo.
+let dayToTouched = false;
+document.getElementById("c-day-to").addEventListener("input", () => { dayToTouched = true; });
+function syncDayTo() {
   const from = document.getElementById("c-day-from");
   const to = document.getElementById("c-day-to");
-  if (parseInt(to.value) < parseInt(from.value) || !to.value) to.value = from.value;
-});
+  if (!dayToTouched || !to.value || parseInt(to.value) < parseInt(from.value)) to.value = from.value;
+}
+document.getElementById("c-day-from").addEventListener("change", syncDayTo);
+document.getElementById("c-day-from").addEventListener("input", syncDayTo);
 
 document.getElementById("btn-clear-constraints").addEventListener("click", async () => {
   const { year, month } = currentPeriod();
