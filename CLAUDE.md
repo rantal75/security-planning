@@ -244,10 +244,21 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   `overtime_days` di `LAST_RESULT` e chiama solo `build_excel` (0,03 s);
   il frontend lo usa con `exportFromScreen()` (fetch + Blob, pulsante
   disabilitato mentre lavora). Il vecchio GET resta ma non è più usato;
-  l'export di un planning SALVATO era già istantaneo. ATTENZIONE, stesso
-  difetto ancora presente: `POST /api/planning/save` rigenera il mese con
-  `_generate_full`, quindi ciò che viene salvato può differire da ciò che
-  l'utente ha visto.
+  l'export di un planning SALVATO era già istantaneo.
+
+- **v25.20** — "Salva planning" salva il planning MOSTRATO. Prima
+  `POST /api/planning/save` rigenerava con `_generate_full` (due calcoli
+  dello stesso mese non sono identici: lo salvato poteva differire dallo
+  schermo). Ora `SavePlanningIn.plan` (days, targets, night_targets,
+  riposi_dovuti, overtime_days di `LAST_RESULT`) viene controllato da
+  `_validated_plan` (giorni 1..N, id esistenti, straordinario nel mese →
+  altrimenti 400 `plan_invalid`, senza toccare nulla) e salvato così com'è;
+  da lì recuperi (`RecoveryEarned`) e storico feste (`_record_holidays`)
+  come prima. Senza `plan` il vecchio comportamento (rigenera) resta come
+  compatibilità. Il frontend salva `LAST_RESULT.year/month/chef_present`
+  (`doGenerate` ora imposta `LAST_RESULT.chef_present`), non i menu
+  mese/anno. Provato: salvato identico allo schermo anche con correzioni
+  manuali; 409 `already_saved`/`has_variations` invariati.
 
 ## Repository Git
 

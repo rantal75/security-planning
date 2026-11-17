@@ -111,3 +111,8 @@ class SavePlanningIn(BaseModel):
     # "already_saved" a meno che questo non sia True: la UI lo usa per
     # chiedere conferma prima di sovrascrivere uno snapshot esistente.
     confirm_overwrite: bool = False
+    # v25.20: il planning ESATTO mostrato a schermo (days, targets, night_targets,
+    # riposi_dovuti, overtime_days). Se presente, il server lo salva così com'è
+    # invece di rigenerare il mese con il motore (che dà risultati diversi
+    # a ogni calcolo). Assente = comportamento vecchio (rigenera).
+    plan: Optional[dict] = None

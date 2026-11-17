@@ -935,6 +935,61 @@ def export_excel(
 # genera quello successivo, senza doverlo rigenerare da capo).
 # ---------------------------------------------------------------------
 
+def _validated_plan(db: Session, year: int, month: int, plan: dict) -> dict:
+    """v25.20: controlla e normalizza il planning inviato dalla pagina prima di
+    salvarlo. Rifiuta (400) giorni mancanti o dipendenti sconosciuti, così uno
+    snapshot rovinato non entra mai nel database."""
+    nd = monthrange(year, month)[1]
+    ids = {e.id for e in db.query(models.Employee).all()}
+
+    def bad(msg: str):
+        raise HTTPException(400, f"plan_invalid: {msg}")
+
+    raw_days = plan.get("days")
+    if not isinstance(raw_days, dict):
+        bad("days")
+    try:
+        days = {int(k): v for k, v in raw_days.items()}
+    except (TypeError, ValueError):
+        bad("days")
+    if set(days) != set(range(1, nd + 1)):
+        bad("giorni mancanti")
+    for d, v in days.items():
+        if not isinstance(v, dict):
+            bad(f"giorno {d}")
+        for kind in ("giorno", "notte", "riposo", "ferie", "malattia"):
+            lst = v.get(kind) or []
+            if not isinstance(lst, list) or any(str(x) not in ids for x in lst):
+                bad(f"giorno {d}: dipendente sconosciuto")
+            v[kind] = [str(x) for x in lst]
+        chef = v.get("chef")
+        if chef is not None and str(chef) not in ids:
+            bad(f"giorno {d}: capo sconosciuto")
+        v["chef"] = str(chef) if chef else None
+
+    def per_employee(name: str):
+        data = plan.get(name)
+        if not isinstance(data, dict) or any(k not in ids for k in data):
+            bad(name)
+        return data
+
+    targets = per_employee("targets")
+    riposi = per_employee("riposi_dovuti")
+    night = per_employee("night_targets")
+    if any(not isinstance(v, int) for v in list(targets.values()) + list(riposi.values())):
+        bad("quote")
+
+    overtime = plan.get("overtime_days") or {}
+    if not isinstance(overtime, dict):
+        bad("overtime_days")
+    for eid, lst in overtime.items():
+        if eid not in ids or not isinstance(lst, list) or any(not isinstance(x, int) or not 1 <= x <= nd for x in lst):
+            bad("overtime_days")
+
+    return {"days": days, "targets": targets, "night_targets": night,
+            "riposi_dovuti": riposi, "overtime_days": overtime}
+
+
 @app.post("/api/planning/save")
 def save_planning(payload: schemas.SavePlanningIn):
     db = db_session()
@@ -954,21 +1009,30 @@ def save_planning(payload: schemas.SavePlanningIn):
             # non corrisponderebbero più. Vanno annullate prima.
             raise HTTPException(409, "has_variations")
 
-        _, result = _generate_full(
-            db, payload.year, payload.month, payload.chef_present,
-            overtime_employee_ids=payload.overtime_employee_ids,
-            overtime_max_extra=payload.overtime_max_extra,
-        )
+        if payload.plan is not None:
+            # v25.20: si salva il planning che l'utente ha davanti, non un
+            # ricalcolo (due calcoli dello stesso mese non sono identici).
+            plan = _validated_plan(db, payload.year, payload.month, payload.plan)
+        else:
+            _, result = _generate_full(
+                db, payload.year, payload.month, payload.chef_present,
+                overtime_employee_ids=payload.overtime_employee_ids,
+                overtime_max_extra=payload.overtime_max_extra,
+            )
+            plan = {"days": result.days, "targets": result.targets,
+                    "night_targets": result.night_targets,
+                    "riposi_dovuti": result.riposi_dovuti,
+                    "overtime_days": result.overtime_days}
         num_days = monthrange(payload.year, payload.month)[1]
 
         row = existing or models.SavedPlanning(year=payload.year, month=payload.month)
         row.num_days = num_days
         row.chef_present = payload.chef_present
-        row.days = result.days
-        row.targets = result.targets
-        row.night_targets = result.night_targets
-        row.riposi_dovuti = result.riposi_dovuti
-        row.overtime_days = result.overtime_days
+        row.days = plan["days"]
+        row.targets = plan["targets"]
+        row.night_targets = plan["night_targets"]
+        row.riposi_dovuti = plan["riposi_dovuti"]
+        row.overtime_days = plan["overtime_days"]
         row.saved_at = datetime.now(timezone.utc)
         if not existing:
             db.add(row)
@@ -981,7 +1045,7 @@ def save_planning(payload: schemas.SavePlanningIn):
         db.query(models.RecoveryEarned).filter_by(
             year=payload.year, month=payload.month
         ).delete()
-        for eid, days in (result.overtime_days or {}).items():
+        for eid, days in (plan["overtime_days"] or {}).items():
             for d in days:
                 db.add(models.RecoveryEarned(
                     year=payload.year, month=payload.month, day=d, employee_id=eid,
@@ -1000,7 +1064,7 @@ def save_planning(payload: schemas.SavePlanningIn):
             year=payload.year, month=payload.month
         ).delete()
 
-        _record_holidays(db, payload.year, payload.month, result.days)
+        _record_holidays(db, payload.year, payload.month, plan["days"])
 
         db.commit()
         db.refresh(row)

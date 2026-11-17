@@ -904,6 +904,7 @@ async function doGenerate() {
         overtime_max_extra: OVERTIME_SELECTION.maxExtra,
       }),
     });
+    LAST_RESULT.chef_present = chef_present;  // serve al salvataggio (v25.20)
     const otCount = Object.keys(LAST_RESULT.overtime_days || {}).length;
     statusEl.textContent = otCount > 0 ? t("overtime_used_ok").replace("{n}", otCount) : t("generated_ok");
     if (LAST_RESULT.relaxed_block3) statusEl.textContent += " " + t("relaxed_note");
@@ -1179,8 +1180,10 @@ async function loadSavedList() {
 
 document.getElementById("btn-save-planning").addEventListener("click", async () => {
   if (!LAST_RESULT || VIEWING_SAVED) return;
-  const { year, month } = currentPeriod();
-  const chef_present = document.getElementById("p-chef-present").checked;
+  // v25.20: si salva il planning mostrato (mese e "capo presente" compresi), non
+  // quello del menu mese/anno, che potrebbe essere stato cambiato dopo.
+  const { year, month } = LAST_RESULT;
+  const chef_present = LAST_RESULT.chef_present ?? document.getElementById("p-chef-present").checked;
   const saveStatus = document.getElementById("save-status");
   saveStatus.textContent = "…";
   saveStatus.className = "status-msg";
@@ -1190,8 +1193,13 @@ document.getElementById("btn-save-planning").addEventListener("click", async () 
       method: "POST",
       body: JSON.stringify({
         year, month, chef_present, confirm_overwrite: confirmOverwrite,
-        overtime_employee_ids: OVERTIME_SELECTION.ids,
-        overtime_max_extra: OVERTIME_SELECTION.maxExtra,
+        plan: {
+          days: LAST_RESULT.days,
+          targets: LAST_RESULT.targets,
+          night_targets: LAST_RESULT.night_targets,
+          riposi_dovuti: LAST_RESULT.riposi_dovuti,
+          overtime_days: LAST_RESULT.overtime_days || {},
+        },
       }),
     });
   }
