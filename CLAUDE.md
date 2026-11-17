@@ -197,6 +197,19 @@ SEMPRE e insieme questi tre punti (mai uno solo):
   solutore). Nota: febbraio 2027 dà "Nessuna soluzione" anche col motore
   v25.14 e senza vincoli: problema preesistente, da indagare.
 
+- **v25.16** — Febbraio a 28 giorni non aveva soluzione (INFEASIBLE in 0,5 s,
+  non timeout): con "esattamente un blocco da 3" restano 56 calendari per
+  persona (1015 a 31 giorni) e la squadra non copre tutti i giorni, qualunque
+  sia l'organico (provato con CP-SAT solo sui calendari). Ripiego in
+  `ShiftEngine.generate`: se lo stato è `INFEASIBLE` (NON se è scaduto il
+  tempo) e `allow_two_block3` è False, riprova con 1-2 blocchi da 3;
+  `EngineResult.relaxed_block3` e `relaxed_block3` nella risposta di
+  `/api/planning/generate`; `doGenerate()` aggiunge `relaxed_note` sotto
+  "Genera planning". I mesi che funzionano non passano mai dal ripiego
+  (provato su gen 2027, mar 2027, feb 2028). La diagnosi dei vincoli
+  impossibili funziona come prima. Con assenze, riposi forzati o turni
+  imposti febbraio era impossibile comunque: il ripiego copre anche questi.
+
 ## Repository Git
 
 Il progetto è versionato con Git e pubblicato su

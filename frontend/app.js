@@ -68,6 +68,7 @@ const I18N = {
     btn_delete_saved: "Elimina",
     confirm_delete_saved: "Eliminare il planning salvato di {month}? Vengono tolte anche le variazioni (assenze, sostituzioni) e i giorni di recupero maturati in quel mese, e il mese successivo non lo vedrà più per la continuità. L'operazione non si può annullare.",
     saved_deleted: "Planning di {month} eliminato.",
+    relaxed_note: "Nota: per questo mese le regole normali non avevano soluzione, quindi ad alcune persone è stato ammesso un secondo blocco da 3 giorni di lavoro.",
     saved_empty: "Nessun planning salvato per ora.",
     saved_select_none: "— Seleziona un mese —",
     boundary_warning_title: "Continuità con il mese precedente salvato",
@@ -204,6 +205,7 @@ const I18N = {
     btn_delete_saved: "Supprimer",
     confirm_delete_saved: "Supprimer le planning enregistré de {month} ? Les modifications (absences, remplacements) et les jours de récupération acquis ce mois-là sont aussi supprimés, et le mois suivant ne le verra plus pour la continuité. Cette action est irréversible.",
     saved_deleted: "Planning de {month} supprimé.",
+    relaxed_note: "Note : pour ce mois les règles normales n'avaient pas de solution ; certaines personnes ont donc un second bloc de 3 jours de travail.",
     saved_empty: "Aucun planning enregistré pour l'instant.",
     saved_select_none: "— Sélectionner un mois —",
     boundary_warning_title: "Continuité avec le mois précédent enregistré",
@@ -804,6 +806,7 @@ async function doGenerate() {
     });
     const otCount = Object.keys(LAST_RESULT.overtime_days || {}).length;
     statusEl.textContent = otCount > 0 ? t("overtime_used_ok").replace("{n}", otCount) : t("generated_ok");
+    if (LAST_RESULT.relaxed_block3) statusEl.textContent += " " + t("relaxed_note");
     statusEl.className = "status-msg ok";
     hideOvertimePanel();
     populateHighlightSelect();

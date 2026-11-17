@@ -760,6 +760,8 @@ def generate_planning(payload: schemas.GenerateIn):
             # {employee_id: [giorni]} — giorni di straordinario usati dal
             # solutore per trovare una soluzione, tra quelli concessi.
             "overtime_days": result.overtime_days,
+            # v25.16: True = mese generato col ripiego dei blocchi da 3 (febbraio).
+            "relaxed_block3": result.relaxed_block3,
         }
     finally:
         db.close()

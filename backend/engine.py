@@ -176,6 +176,9 @@ class EngineResult:
     # isolare la singola voce responsabile entro il budget di prove.
     diagnosis: list = field(default_factory=list)
     error: Optional[str] = None
+    # v25.16: True se il mese è stato generato col ripiego "fino a 2 blocchi da 3"
+    # (vedi generate): la regola normale (esattamente 1) non aveva soluzione.
+    relaxed_block3: bool = False
 
 
 class ShiftEngine:
@@ -186,7 +189,8 @@ class ShiftEngine:
                  manual_constraints: dict[tuple[int, str], str], chef_present: bool,
                  overtime_ids: Optional[set[str]] = None, overtime_max_extra: int = 0,
                  holiday_history: Optional[dict[str, dict[str, list[int]]]] = None,
-                 prev_december: Optional[dict] = None, holiday_rule: bool = True):
+                 prev_december: Optional[dict] = None, holiday_rule: bool = True,
+                 allow_two_block3: bool = False):
         """
         employees: lista di dict dipendente (id, first_name, last_name,
             pref_night, pref_day, pref_33, is_titular, is_adjoint, is_equipe,
@@ -209,6 +213,9 @@ class ShiftEngine:
             salvato: il 1° gennaio non ha regole particolari.
         holiday_rule: False disattiva la regola delle feste; usato solo
             dalla diagnosi per capire se è lei a rendere il mese impossibile.
+        allow_two_block3: True ammette da 1 a 2 blocchi da 3 giorni di
+            lavoro invece di esattamente 1. Non va passato a mano: lo
+            attiva generate() da solo, solo se il mese è impossibile.
         """
         self.employees = sorted(employees, key=lambda e: -get_employee_weight(e))
         self.year, self.month = year, month
@@ -217,6 +224,7 @@ class ShiftEngine:
         self.num_days = calendar.monthrange(year, month)[1]
         self.overtime_ids = set(overtime_ids or set())
         self.overtime_max_extra = max(0, int(overtime_max_extra or 0))
+        self.allow_two_block3 = allow_two_block3
         self.holiday_history = holiday_history or {}
         self.prev_december = prev_december
         self.holiday_rule = holiday_rule
@@ -511,7 +519,15 @@ class ShiftEngine:
                     model.Add(b3 <= work[w, d + 2])
                     model.Add(b3 >= is_start[d] + work[w, d + 1] + work[w, d + 2] - 2)
                     is_block3.append((d, b3))
-                model.Add(sum(b for _, b in is_block3) == 1)
+                # v25.16: a febbraio (28 giorni) con 15 giorni di lavoro restano
+                # solo 56 calendari possibili per persona e la squadra non
+                # riesce a coprire tutti i giorni. In quel caso generate()
+                # riprova ammettendo un secondo blocco da 3.
+                if self.allow_two_block3:
+                    model.Add(sum(b for _, b in is_block3) >= 1)
+                    model.Add(sum(b for _, b in is_block3) <= 2)
+                else:
+                    model.Add(sum(b for _, b in is_block3) == 1)
 
                 # Opzione 3-3 (🔄): se attiva, premia il pattern Giorno+Notte+Notte
                 # nell'unico blocco da 3 giorni disponibile.
@@ -621,6 +637,14 @@ class ShiftEngine:
         solver.parameters.num_search_workers = 8
         status = solver.Solve(model)
 
+        if status == cp_model.INFEASIBLE and not self.allow_two_block3:
+            # Ripiego (v25.16): solo se il mese è PROVATO impossibile (non se
+            # il tempo è scaduto), si riprova con la regola dei blocchi da 3
+            # allentata. I mesi che già funzionano non passano mai di qui.
+            self.allow_two_block3 = True
+            return self.generate(time_limit=time_limit, feasibility_only=feasibility_only,
+                                 diagnose=diagnose)
+
         if status not in (cp_model.FEASIBLE, cp_model.OPTIMAL):
             diagnosis = self._diagnose() if diagnose else []
             return EngineResult(ok=False, error="no_solution", diagnosis=diagnosis)
@@ -688,4 +712,5 @@ class ShiftEngine:
             night_targets=dict(self.night_targets),
             riposi_dovuti=dict(self.riposi_dovuti),
             overtime_days=overtime_days,
+            relaxed_block3=self.allow_two_block3,
         )
